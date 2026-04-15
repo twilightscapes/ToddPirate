@@ -137,6 +137,14 @@ app.listen(PORT, async () => {
       console.log(`[admin] Promoted ${firstUser.username} to admin (first user)`);
     }
   }
+
+  // Run initial feed aggregation on startup
+  try {
+    await aggregateAllFeeds(prisma);
+    console.log(`[startup] Initial feed aggregation complete`);
+  } catch (err) {
+    console.error(`[startup] Initial feed aggregation failed:`, err);
+  }
 });
 
 export default app;

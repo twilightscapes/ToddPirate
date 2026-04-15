@@ -245,10 +245,30 @@ export async function provisionNode(user, settings) {
   }
 
   // 4. Create a new tree with all template files
-  console.log(`[provision] Creating tree with ${treeEntries.length} files...`);
+  // Get current tree SHA as base_tree (needed for repos initialized with auto_init)
+  let baseTreeSha;
+  try {
+    const headRef = await ghApi(
+      `/repos/${user.username}/${repoName}/git/ref/heads/main`,
+      token
+    );
+    const headCommit = await ghApi(
+      `/repos/${user.username}/${repoName}/git/commits/${headRef.object.sha}`,
+      token
+    );
+    baseTreeSha = headCommit.tree.sha;
+  } catch (e) {
+    console.log(`[provision] Could not get base tree: ${e.message}`);
+  }
+
+  console.log(`[provision] Creating tree with ${treeEntries.length} files (base: ${baseTreeSha || 'none'})...`);
+  console.log(`[provision] Sample entry:`, JSON.stringify(treeEntries[0]));
+  const treePayload = { tree: treeEntries };
+  if (baseTreeSha) treePayload.base_tree = baseTreeSha;
+
   const newTree = await ghApi(`/repos/${user.username}/${repoName}/git/trees`, token, {
     method: 'POST',
-    body: JSON.stringify({ tree: treeEntries }),
+    body: JSON.stringify(treePayload),
   });
 
   // 5. Create a commit (orphan if new repo, child if existing)

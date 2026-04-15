@@ -279,18 +279,16 @@ export async function provisionNode(user, settings) {
     body: JSON.stringify(treePayload),
   });
 
-  // 5. Create a commit (orphan if new repo, child if existing)
+  // 5. Get parent commit SHA (always try — auto_init creates main branch)
   let parentShas = [];
-  if (repoExists) {
-    try {
-      const refData = await ghApi(
-        `/repos/${user.username}/${repoName}/git/ref/heads/main`,
-        token
-      );
-      parentShas = [refData.object.sha];
-    } catch {
-      // No main branch yet — orphan commit
-    }
+  try {
+    const refData = await ghApi(
+      `/repos/${user.username}/${repoName}/git/ref/heads/main`,
+      token
+    );
+    parentShas = [refData.object.sha];
+  } catch {
+    // No main branch yet — orphan commit
   }
 
   const commit = await ghApi(`/repos/${user.username}/${repoName}/git/commits`, token, {
@@ -302,15 +300,13 @@ export async function provisionNode(user, settings) {
     }),
   });
 
-  // 6. Create or update the main branch ref
+  // 6. Update or create the main branch ref
   if (parentShas.length > 0) {
-    // Existing branch — update it
     await ghApi(`/repos/${user.username}/${repoName}/git/refs/heads/main`, token, {
       method: 'PATCH',
       body: JSON.stringify({ sha: commit.sha, force: true }),
     });
   } else {
-    // No branch yet — create it
     await ghApi(`/repos/${user.username}/${repoName}/git/refs`, token, {
       method: 'POST',
       body: JSON.stringify({ ref: 'refs/heads/main', sha: commit.sha }),

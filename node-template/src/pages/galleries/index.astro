@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
+import { withBase } from '../../lib/config';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const galleries = (await getCollection('galleries'))
@@ -18,7 +19,7 @@ const galleries = (await getCollection('galleries'))
         {gallery.data.coverImage && (
           <div class="aspect-video overflow-hidden">
             <img
-              src={typeof gallery.data.coverImage === 'string' ? gallery.data.coverImage : gallery.data.coverImage.src}
+              src={withBase(typeof gallery.data.coverImage === 'string' ? gallery.data.coverImage : gallery.data.coverImage.src)}
               alt={gallery.data.title}
               class="h-full w-full object-cover transition group-hover:scale-105"
               loading="lazy"

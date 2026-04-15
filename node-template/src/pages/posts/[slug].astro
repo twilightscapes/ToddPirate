@@ -4,6 +4,7 @@ import ExifDisplay from '../../components/ExifDisplay.astro';
 import PhotoGallery from '../../components/PhotoGallery.astro';
 import SocialActions from '../../components/SocialActions.astro';
 import { getCollection } from 'astro:content';
+import { withBase } from '../../lib/config';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -14,13 +15,13 @@ const { post } = Astro.props;
 const { Content } = await post.render();
 ---
 
-<BaseLayout title={post.data.title} description={post.data.description} image={post.data.image ? (typeof post.data.image === 'string' ? post.data.image : post.data.image.src) : undefined}>
+<BaseLayout title={post.data.title} description={post.data.description} image={post.data.image ? withBase(typeof post.data.image === 'string' ? post.data.image : post.data.image.src) : undefined}>
   <article class="mx-auto max-w-4xl">
     <!-- Hero Image -->
     {post.data.image && (
       <div class="mb-8 overflow-hidden rounded-lg">
         <img
-          src={typeof post.data.image === 'string' ? post.data.image : post.data.image.src}
+          src={withBase(typeof post.data.image === 'string' ? post.data.image : post.data.image.src)}
           alt={post.data.imageAlt || post.data.title}
           class="w-full"
         />

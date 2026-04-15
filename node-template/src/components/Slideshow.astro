@@ -1,4 +1,6 @@
 ---
+import { withBase } from '../lib/config';
+
 interface Photo {
   src: ImageMetadata | string;
   alt?: string;
@@ -23,7 +25,7 @@ const {
 } = Astro.props;
 
 const photoData = photos.map(p => ({
-  src: typeof p.src === 'string' ? p.src : p.src.src,
+  src: withBase(typeof p.src === 'string' ? p.src : p.src.src),
   alt: p.alt || '',
   caption: p.caption || '',
   credit: p.credit || '',

@@ -8,7 +8,7 @@ router.get('/github', (_req, res) => {
   const params = new URLSearchParams({
     client_id: process.env.GITHUB_CLIENT_ID,
     redirect_uri: `${process.env.HUB_URL}/api/auth/github/callback`,
-    scope: 'read:user user:email',
+    scope: 'read:user user:email public_repo',
   });
   res.redirect(`https://github.com/login/oauth/authorize?${params}`);
 });
@@ -50,6 +50,7 @@ router.get('/github/callback', async (req, res) => {
         username: ghUser.login,
         displayName: ghUser.name || ghUser.login,
         avatarUrl: ghUser.avatar_url,
+        githubToken: tokenData.access_token,
       },
       create: {
         githubId: ghUser.id,
@@ -59,6 +60,7 @@ router.get('/github/callback', async (req, res) => {
         bio: ghUser.bio || '',
         siteUrl: `https://${ghUser.login}.github.io`,
         feedUrl: `https://${ghUser.login}.github.io/feed.xml`,
+        githubToken: tokenData.access_token,
       },
     });
 
@@ -69,9 +71,13 @@ router.get('/github/callback', async (req, res) => {
       { expiresIn: '30d' }
     );
 
-    // Redirect back to the user's site (or hub frontend) with token
-    const redirectUrl = user.siteUrl || process.env.HUB_URL;
-    res.redirect(`${redirectUrl}?token=${jwtToken}`);
+    // New users go to setup wizard; returning users go to their site
+    if (!user.nodeCreated) {
+      res.redirect(`${process.env.HUB_URL}/setup.html?token=${jwtToken}`);
+    } else {
+      const redirectUrl = user.siteUrl || process.env.HUB_URL;
+      res.redirect(`${redirectUrl}?token=${jwtToken}`);
+    }
   } catch (err) {
     console.error('GitHub OAuth error:', err);
     res.status(500).json({ error: 'Authentication failed' });

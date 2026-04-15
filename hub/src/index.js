@@ -18,6 +18,7 @@ import adminRoutes from './routes/admin.js';
 import directoryRoutes from './routes/directory.js';
 import decapRoutes from './routes/decap.js';
 import blueskyRoutes from './routes/bluesky.js';
+import setupRoutes from './routes/setup.js';
 import { aggregateAllFeeds } from './services/aggregator.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +73,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/directory', directoryRoutes);
 app.use('/api/decap', decapRoutes);
 app.use('/api/bluesky', blueskyRoutes);
+app.use('/api/setup', setupRoutes);
 
 // --- SSE endpoint for real-time updates ---
 const sseClients = new Map(); // userId -> Set<res>

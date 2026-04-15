@@ -141,6 +141,13 @@ function customiseFile(path, contentBase64, settings) {
       /site:\s*(?:process\.env\.SITE_URL\s*\|\|\s*)?'[^']*'/,
       `site: process.env.SITE_URL || '${siteUrl}'`
     );
+    // For project sites, set a default base path
+    if (!isUserSite) {
+      text = text.replace(
+        /const base = process\.env\.BASE_PATH \|\| undefined/,
+        `const base = process.env.BASE_PATH || '/${repoName}'`
+      );
+    }
   }
 
   if (path === 'public/admin/config.yml') {

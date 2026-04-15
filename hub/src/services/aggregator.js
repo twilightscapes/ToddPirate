@@ -92,8 +92,6 @@ export async function aggregateUserFeed(prisma, user) {
       }
       continue;
     }
-    const gallery = extractGallery(item);
-    const tags = extractTags(item);
 
     try {
       await prisma.post.create({

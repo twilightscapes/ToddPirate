@@ -14,4 +14,4 @@ COPY src ./src/
 
 EXPOSE 3000
 
-CMD ["node", "src/start.js"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate && node src/start.js"]

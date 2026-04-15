@@ -131,6 +131,62 @@ router.post('/repair', authenticate, async (req, res) => {
   }
 });
 
+// Admin: push a file update to a user's repo
+router.post('/push-file', authenticate, async (req, res) => {
+  const prisma = req.app.locals.prisma;
+  const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!admin?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+  const { username, repoName, path, content, message } = req.body;
+  if (!username || !repoName || !path || !content) {
+    return res.status(400).json({ error: 'username, repoName, path, content required' });
+  }
+
+  const targetUser = await prisma.user.findFirst({ where: { username } });
+  if (!targetUser?.githubToken) {
+    return res.status(400).json({ error: 'User has no stored GitHub token' });
+  }
+
+  const token = targetUser.githubToken;
+  const headers = {
+    Authorization: `token ${token}`,
+    Accept: 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    // Get existing file SHA
+    const existingRes = await fetch(
+      `https://api.github.com/repos/${username}/${repoName}/contents/${path}`,
+      { headers }
+    );
+    const existingData = existingRes.ok ? await existingRes.json() : null;
+
+    const putRes = await fetch(
+      `https://api.github.com/repos/${username}/${repoName}/contents/${path}`,
+      {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          message: message || `chore: update ${path}`,
+          content: Buffer.from(content).toString('base64'),
+          ...(existingData?.sha ? { sha: existingData.sha } : {}),
+        }),
+      }
+    );
+
+    if (!putRes.ok) {
+      const err = await putRes.text();
+      throw new Error(`${putRes.status} ${err}`);
+    }
+
+    res.json({ ok: true, message: `Updated ${path} in ${username}/${repoName}` });
+  } catch (err) {
+    console.error('[setup/push-file]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Check if the user's node is already set up
 router.get('/status', authenticate, async (req, res) => {
   const prisma = req.app.locals.prisma;

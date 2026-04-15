@@ -158,6 +158,10 @@ function customiseFile(path, contentBase64, settings) {
       /base_url:\s*.+/,
       `base_url: ${HUB_URL}`
     );
+    // For project sites, prefix public_folder with the base path
+    if (!isUserSite) {
+      text = text.replace(/public_folder:\s*\/images/, `public_folder: /${repoName}/images`);
+    }
   }
 
   return Buffer.from(text).toString('base64');

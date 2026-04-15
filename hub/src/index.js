@@ -22,7 +22,11 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 // --- Middleware ---
-app.use(helmet());
+app.use(helmet({
+  crossOriginOpenerPolicy: false,   // Allow Decap CMS popup OAuth flow
+  contentSecurityPolicy: false,      // API server, not serving app pages
+}));
+app.set('trust proxy', 1);           // Behind Railway's reverse proxy
 app.use(express.json({ limit: '5mb' }));
 
 const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);

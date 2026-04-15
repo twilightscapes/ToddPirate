@@ -120,8 +120,17 @@ cron.schedule(`*/${pollInterval} * * * *`, async () => {
 });
 
 // --- Start ---
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🏴‍☠️ Pirate Social Hub running on port ${PORT}`);
+  // Auto-promote first registered user to admin
+  const adminCount = await prisma.user.count({ where: { isAdmin: true } });
+  if (adminCount === 0) {
+    const firstUser = await prisma.user.findFirst({ orderBy: { createdAt: 'asc' } });
+    if (firstUser) {
+      await prisma.user.update({ where: { id: firstUser.id }, data: { isAdmin: true } });
+      console.log(`[admin] Promoted ${firstUser.username} to admin (first user)`);
+    }
+  }
 });
 
 export default app;

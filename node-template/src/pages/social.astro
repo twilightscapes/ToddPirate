@@ -503,6 +503,10 @@ import { siteConfig } from '../lib/config';
           myAvatar = profile.avatar || null;
         }
       }
+      // Update center avatars if already rendered
+      document.querySelectorAll('.my-center-avatar').forEach(el => {
+        if (myAvatar) el.innerHTML = `<img src="${escapeHtml(myAvatar)}" alt="You" class="w-full h-full object-cover" />`;
+      });
     } catch {}
   }
 
@@ -510,7 +514,8 @@ import { siteConfig } from '../lib/config';
 
   async function renderSquadsView() {
     loadMoreContainer.classList.add('hidden');
-    await initSquadsProfile();
+    // Fire profile fetch in background — don't block rendering
+    initSquadsProfile();
 
     feedContainer.innerHTML = `
       <div class="mb-6">
@@ -574,7 +579,8 @@ import { siteConfig } from '../lib/config';
     container.innerHTML = renderSquad(squad);
     attachSquadListeners();
     initHlsVideos();
-    checkSquadActivity(squad.id);
+    // Use cached lastPostAt from DB for instant dot colors (no API call)
+    applyCachedActivity(squad);
   }
 
   async function loadSquads() {
@@ -625,7 +631,7 @@ import { siteConfig } from '../lib/config';
       </div>
 
       <div class="squad-circle relative flex justify-center items-center my-6" style="min-height:16rem">
-        <div class="absolute rounded-full border-2 border-blue-500 overflow-hidden bg-zinc-800 flex items-center justify-center" style="width:4rem;height:4rem;z-index:2">
+        <div class="my-center-avatar absolute rounded-full border-2 border-blue-500 overflow-hidden bg-zinc-800 flex items-center justify-center" style="width:4rem;height:4rem;z-index:2">
           ${myAvatar
             ? `<img src="${escapeHtml(myAvatar)}" alt="You" class="w-full h-full object-cover" />`
             : `<span class="text-lg">👤</span>`
@@ -669,12 +675,32 @@ import { siteConfig } from '../lib/config';
       </div>
 
       ${squad.members.length ? `
-      <button class="view-squad-feed-btn mt-4 w-full rounded bg-zinc-800 py-2 text-sm hover:bg-zinc-700 transition" data-squad-id="${squad.id}">
-        View Squad Feed
-      </button>
+      <div class="flex gap-2 mt-4">
+        <button class="check-activity-btn flex-1 rounded bg-zinc-800 py-2 text-sm hover:bg-zinc-700 transition" data-squad-id="${squad.id}">
+          Check Activity
+        </button>
+        <button class="view-squad-feed-btn flex-1 rounded bg-zinc-800 py-2 text-sm hover:bg-zinc-700 transition" data-squad-id="${squad.id}">
+          View Squad Feed
+        </button>
+      </div>
       <div class="squad-feed hidden mt-4 space-y-4" data-squad-id="${squad.id}"></div>
       ` : ''}
     </div>`;
+  }
+
+  function applyCachedActivity(squad) {
+    const cutoff = new Date(Date.now() - squad.activityWindow * 60 * 1000);
+    squad.members.forEach(m => {
+      const dot = document.querySelector(`.activity-dot[data-member-id="${m.id}"]`);
+      if (!dot) return;
+      if (m.lastPostAt && new Date(m.lastPostAt) >= cutoff) {
+        dot.classList.remove('bg-zinc-600');
+        dot.classList.add('bg-green-500');
+        dot.title = `Last posted ${timeAgo(m.lastPostAt)} (cached)`;
+      } else {
+        dot.title = m.lastPostAt ? `Last posted ${timeAgo(m.lastPostAt)} (cached)` : 'No data yet';
+      }
+    });
   }
 
   async function checkSquadActivity(squadId) {
@@ -713,7 +739,16 @@ import { siteConfig } from '../lib/config';
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ activityWindow: parseInt(slider.value) }),
         });
-        checkSquadActivity(slider.dataset.squadId);
+      });
+    });
+
+    document.querySelectorAll('.check-activity-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.textContent = 'Checking...';
+        btn.disabled = true;
+        await checkSquadActivity(btn.dataset.squadId);
+        btn.textContent = 'Check Activity';
+        btn.disabled = false;
       });
     });
 

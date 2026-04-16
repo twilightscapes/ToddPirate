@@ -277,8 +277,11 @@ import { siteConfig } from '../lib/config';
 
   function formatText(str) {
     if (!str) return '';
-    // Strip Bluesky embed placeholders
-    let text = str.replace(/\[contains quote post or other embedded content\]/gi, '').trim();
+    // Decode XML newline entities, strip Bluesky embed placeholders
+    let text = str
+      .replace(/&#xA;/gi, '\n')
+      .replace(/\[contains quote post or other embedded content\]/gi, '')
+      .trim();
     return escapeHtml(text).replace(/\n/g, '<br>');
   }
 

@@ -475,22 +475,35 @@ import { siteConfig } from '../lib/config';
     } catch {}
   }
 
+  let allSquads = [];
+
   async function renderSquadsView() {
     loadMoreContainer.classList.add('hidden');
     await initSquadsProfile();
 
     feedContainer.innerHTML = `
       <div class="mb-6">
-        <p class="text-zinc-400 text-sm mb-4">Create groups of Bluesky users. See who's active at a glance and browse their posts.</p>
-        <form id="create-squad-form" class="flex gap-2">
+        <div class="flex items-center gap-2 mb-4">
+          <select id="squad-select" class="flex-1 rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            <option value="">Select a squad...</option>
+          </select>
+          <button id="toggle-create-squad" class="rounded bg-blue-600 px-3 py-2 text-sm font-medium hover:bg-blue-500 transition whitespace-nowrap">+ New</button>
+        </div>
+        <form id="create-squad-form" class="hidden flex gap-2 mb-4">
           <input type="text" id="squad-name-input" placeholder="Squad name (e.g. Photo Friends)" required
             class="flex-1 rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
           <button type="submit" class="rounded bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 transition whitespace-nowrap">
-            Create Squad
+            Create
           </button>
         </form>
       </div>
-      <div id="squads-list" class="space-y-8"></div>`;
+      <div id="squads-list"></div>`;
+
+    document.getElementById('toggle-create-squad').addEventListener('click', () => {
+      const form = document.getElementById('create-squad-form');
+      form.classList.toggle('hidden');
+      if (!form.classList.contains('hidden')) document.getElementById('squad-name-input').focus();
+    });
 
     document.getElementById('create-squad-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -505,28 +518,59 @@ import { siteConfig } from '../lib/config';
         });
         if (!res.ok) { const d = await res.json(); alert(d.error); return; }
         input.value = '';
+        document.getElementById('create-squad-form').classList.add('hidden');
         loadSquads();
       } catch { alert('Failed to create squad'); }
+    });
+
+    document.getElementById('squad-select').addEventListener('change', (e) => {
+      const id = e.target.value;
+      showSquad(id);
     });
 
     loadSquads();
   }
 
-  async function loadSquads() {
+  function showSquad(id) {
     const container = document.getElementById('squads-list');
     if (!container) return;
+    if (!id) {
+      container.innerHTML = '<div class="text-center py-8 text-zinc-500">Select a squad above or create a new one</div>';
+      return;
+    }
+    const squad = allSquads.find(s => String(s.id) === String(id));
+    if (!squad) return;
+    container.innerHTML = renderSquad(squad);
+    attachSquadListeners();
+    checkSquadActivity(squad.id);
+  }
+
+  async function loadSquads() {
+    const container = document.getElementById('squads-list');
+    const select = document.getElementById('squad-select');
+    if (!container || !select) return;
     try {
       const res = await fetch(`${hubUrl}/api/bluesky-feed/squads`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const squads = await res.json();
-      if (!squads.length) {
-        container.innerHTML = '<div class="text-center py-8 text-zinc-500">No squads yet. Create one above!</div>';
+      allSquads = await res.json();
+
+      // Preserve current selection
+      const prevId = select.value;
+
+      // Rebuild select options
+      select.innerHTML = '<option value="">Select a squad...</option>' +
+        allSquads.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.members.length})</option>`).join('');
+
+      if (!allSquads.length) {
+        container.innerHTML = '<div class="text-center py-8 text-zinc-500">No squads yet. Create one!</div>';
         return;
       }
-      container.innerHTML = squads.map(squad => renderSquad(squad)).join('');
-      attachSquadListeners();
-      squads.forEach(squad => checkSquadActivity(squad.id));
+
+      // Re-select previous or first
+      const targetId = prevId && allSquads.find(s => String(s.id) === String(prevId)) ? prevId : String(allSquads[0].id);
+      select.value = targetId;
+      showSquad(targetId);
     } catch {
       container.innerHTML = '<div class="text-center py-8 text-red-400">Failed to load squads</div>';
     }

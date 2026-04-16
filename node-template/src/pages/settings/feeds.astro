@@ -70,6 +70,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   </div>
 </BaseLayout>
 
+<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <script is:inline define:vars={{ hubUrl: siteConfig.hubUrl }}>
   const token = localStorage.getItem('ps_token');
 
@@ -336,24 +337,27 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       // Video
       if (embed.video?.playlist) {
         embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
-          <video controls preload="none" poster="${esc(embed.video.thumb || '')}" class="w-full h-full">
-            <source src="${esc(embed.video.playlist)}" type="application/x-mpegURL" />
-          </video>
+          <video controls preload="none" poster="${esc(embed.video.thumb || '')}" class="w-full h-full" data-hls="${esc(embed.video.playlist)}"></video>
         </div>`;
       }
 
       // External link card
       if (embed.external?.uri) {
-        let extHost = '';
-        try { extHost = new URL(embed.external.uri).hostname; } catch {}
-        embedHtml += `<a href="${esc(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
-          ${embed.external.thumb ? `<img src="${esc(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
-          <div class="p-3">
-            <div class="text-sm font-medium text-zinc-200 line-clamp-1">${esc(embed.external.title || '')}</div>
-            ${embed.external.description ? `<div class="text-xs text-zinc-500 mt-1 line-clamp-2">${esc(embed.external.description)}</div>` : ''}
-            <div class="text-xs text-zinc-600 mt-1">${esc(extHost)}</div>
-          </div>
-        </a>`;
+        const ytId = getYouTubeId(embed.external.uri);
+        if (ytId) {
+          embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+        } else {
+          let extHost = '';
+          try { extHost = new URL(embed.external.uri).hostname; } catch {}
+          embedHtml += `<a href="${esc(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
+            ${embed.external.thumb ? `<img src="${esc(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
+            <div class="p-3">
+              <div class="text-sm font-medium text-zinc-200 line-clamp-1">${esc(embed.external.title || '')}</div>
+              ${embed.external.description ? `<div class="text-xs text-zinc-500 mt-1 line-clamp-2">${esc(embed.external.description)}</div>` : ''}
+              <div class="text-xs text-zinc-600 mt-1">${esc(extHost)}</div>
+            </div>
+          </a>`;
+        }
       }
 
       // Quote post
@@ -522,6 +526,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   });
 
   // --- Helpers ---
+  function getYouTubeId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
   function esc(str) {
     if (!str) return '';
     const div = document.createElement('div');

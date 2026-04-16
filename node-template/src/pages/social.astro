@@ -45,6 +45,7 @@ import { siteConfig } from '../lib/config';
   </div>
 </BaseLayout>
 
+<script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <script is:inline define:vars={{ hubUrl: siteConfig.hubUrl }}>
   const token = localStorage.getItem('ps_token');
   const feedContainer = document.getElementById('feed-container');
@@ -157,22 +158,25 @@ import { siteConfig } from '../lib/config';
       // Video
       if (embed.video?.playlist) {
         embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video relative">
-          <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full">
-            <source src="${escapeHtml(embed.video.playlist)}" type="application/x-mpegURL" />
-          </video>
+          <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
         </div>`;
       }
 
       // External link card
       if (embed.external?.uri) {
-        embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
-          ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
-          <div class="p-3">
-            <div class="text-sm font-medium text-zinc-200 line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
-            ${embed.external.description ? `<div class="text-xs text-zinc-500 mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
-            <div class="text-xs text-zinc-600 mt-1">${escapeHtml(new URL(embed.external.uri).hostname)}</div>
-          </div>
-        </a>`;
+        const ytId = getYouTubeId(embed.external.uri);
+        if (ytId) {
+          embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+        } else {
+          embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
+            ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
+            <div class="p-3">
+              <div class="text-sm font-medium text-zinc-200 line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
+              ${embed.external.description ? `<div class="text-xs text-zinc-500 mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
+              <div class="text-xs text-zinc-600 mt-1">${escapeHtml(new URL(embed.external.uri).hostname)}</div>
+            </div>
+          </a>`;
+        }
       }
 
       // Quote post
@@ -217,6 +221,7 @@ import { siteConfig } from '../lib/config';
     loadMoreContainer.classList.toggle('hidden', !data.hasMore);
     attachInteractionListeners();
     attachShareListeners();
+    initHlsVideos();
   }
 
   function renderBskyPosts(data, append) {
@@ -242,21 +247,24 @@ import { siteConfig } from '../lib/config';
       // Video
       if (embed.video?.playlist) {
         embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
-          <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full">
-            <source src="${escapeHtml(embed.video.playlist)}" type="application/x-mpegURL" />
-          </video>
+          <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
         </div>`;
       }
 
       // External link card
       if (embed.external?.uri) {
-        embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
-          ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
-          <div class="p-3">
-            <div class="text-sm font-medium text-zinc-200 line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
-            ${embed.external.description ? `<div class="text-xs text-zinc-500 mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
-          </div>
-        </a>`;
+        const ytId = getYouTubeId(embed.external.uri);
+        if (ytId) {
+          embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+        } else {
+          embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
+            ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
+            <div class="p-3">
+              <div class="text-sm font-medium text-zinc-200 line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
+              ${embed.external.description ? `<div class="text-xs text-zinc-500 mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
+            </div>
+          </a>`;
+        }
       }
 
       // Quote
@@ -308,6 +316,7 @@ import { siteConfig } from '../lib/config';
 
     loadMoreContainer.classList.toggle('hidden', !bskyCursor);
     attachShareListeners();
+    initHlsVideos();
   }
 
   function renderPeople(data, append) {
@@ -336,6 +345,7 @@ import { siteConfig } from '../lib/config';
     loadMoreContainer.classList.toggle('hidden', !data.hasMore);
     attachInteractionListeners();
     attachShareListeners();
+    initHlsVideos();
   }
 
   function attachInteractionListeners() {
@@ -451,6 +461,27 @@ import { siteConfig } from '../lib/config';
     });
   }
 
+  function getYouTubeId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  function initHlsVideos() {
+    document.querySelectorAll('video[data-hls]').forEach(video => {
+      if (video._hlsInit) return;
+      video._hlsInit = true;
+      const src = video.dataset.hls;
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = src;
+      } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(src);
+        hls.attachMedia(video);
+      }
+    });
+  }
+
   // === SQUADS ===
   let myAvatar = null;
   let myHandle = null;
@@ -542,6 +573,7 @@ import { siteConfig } from '../lib/config';
     if (!squad) return;
     container.innerHTML = renderSquad(squad);
     attachSquadListeners();
+    initHlsVideos();
     checkSquadActivity(squad.id);
   }
 
@@ -744,6 +776,7 @@ import { siteConfig } from '../lib/config';
           feedEl.innerHTML = (data.posts || []).map(post => renderSquadCard(post)).join('') || '<div class="text-center py-4 text-zinc-500">No posts</div>';
           feedEl.classList.remove('hidden');
           btn.textContent = 'Hide Squad Feed';
+          initHlsVideos();
         } catch {
           feedEl.innerHTML = '<div class="text-center py-4 text-red-400">Failed to load</div>';
           feedEl.classList.remove('hidden');
@@ -768,6 +801,7 @@ import { siteConfig } from '../lib/config';
           feedEl.innerHTML = (data.posts || []).map(post => renderSquadCard(post)).join('') || '<div class="text-center py-4 text-zinc-500">No posts</div>';
           feedEl.classList.remove('hidden');
           feedBtn.textContent = 'Hide Squad Feed';
+          initHlsVideos();
         } catch {
           feedEl.innerHTML = '<div class="text-center py-4 text-red-400">Failed to load</div>';
           feedEl.classList.remove('hidden');
@@ -790,16 +824,19 @@ import { siteConfig } from '../lib/config';
     }
     if (embed.video?.playlist) {
       embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
-        <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full">
-          <source src="${escapeHtml(embed.video.playlist)}" type="application/x-mpegURL" />
-        </video>
+        <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
       </div>`;
     }
     if (embed.external?.uri) {
-      embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
-        ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
-        <div class="p-3"><div class="text-sm font-medium text-zinc-200 line-clamp-1">${escapeHtml(embed.external.title || '')}</div></div>
-      </a>`;
+      const ytId = getYouTubeId(embed.external.uri);
+      if (ytId) {
+        embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+      } else {
+        embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
+          ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
+          <div class="p-3"><div class="text-sm font-medium text-zinc-200 line-clamp-1">${escapeHtml(embed.external.title || '')}</div></div>
+        </a>`;
+      }
     }
     if (embed.quote?.text) {
       embedHtml += `<div class="mt-2 rounded border border-zinc-700 p-3 bg-zinc-800/50">

@@ -194,6 +194,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
                 ${feed.lastFetched ? ` · Updated ${timeAgo(feed.lastFetched)}` : ''}
                 ${feed.errorCount > 0 ? ` · <span class="text-yellow-400">${feed.errorCount} errors</span>` : ''}
               </div>
+              <div class="flex items-center gap-2 mt-2">
+                <label class="text-xs text-zinc-500">Max posts:</label>
+                <select class="max-posts-select rounded bg-zinc-800 border border-zinc-700 px-2 py-0.5 text-xs" data-feed-id="${feed.id}" data-current="${feed.maxPosts || 20}">
+                  ${[5, 10, 20, 50, 100].map(n => `<option value="${n}" ${(feed.maxPosts || 20) === n ? 'selected' : ''}>${n}</option>`).join('')}
+                </select>
+              </div>
             </div>
             <div class="flex gap-1.5 shrink-0">
               <button class="view-feed-btn rounded bg-zinc-700 px-2.5 py-1 text-xs hover:bg-zinc-600 transition" data-feed-id="${feed.id}" title="View posts">
@@ -377,6 +383,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         await fetch(`${hubUrl}/api/external-feeds/${btn.dataset.feedId}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
+        });
+        loadFeeds();
+      });
+    });
+
+    document.querySelectorAll('.max-posts-select').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const maxPosts = parseInt(sel.value, 10);
+        await fetch(`${hubUrl}/api/external-feeds/${sel.dataset.feedId}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ maxPosts }),
         });
         loadFeeds();
       });

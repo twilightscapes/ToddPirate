@@ -109,20 +109,43 @@ router.get('/:feedId/posts', authenticate, async (req, res) => {
   res.json({ feed, posts, total, page, limit, hasMore: page * limit < total });
 });
 
-// Update an external feed (e.g. toggle active)
+// Update an external feed (toggle active, set maxPosts)
 router.patch('/:feedId', authenticate, async (req, res) => {
   const prisma = req.app.locals.prisma;
-  const { active } = req.body;
+  const { active, maxPosts } = req.body;
 
   const feed = await prisma.externalFeed.findFirst({
     where: { id: req.params.feedId, userId: req.user.id },
   });
   if (!feed) return res.status(404).json({ error: 'Feed not found' });
 
+  const data = {};
+  if (typeof active === 'boolean') data.active = active;
+  if (typeof maxPosts === 'number') {
+    data.maxPosts = Math.max(1, Math.min(100, maxPosts));
+  }
+
   const updated = await prisma.externalFeed.update({
     where: { id: feed.id },
-    data: { ...(typeof active === 'boolean' ? { active } : {}) },
+    data,
   });
+
+  // Prune excess posts if maxPosts was lowered
+  if (data.maxPosts) {
+    const postCount = await prisma.externalPost.count({ where: { feedId: feed.id } });
+    if (postCount > data.maxPosts) {
+      const toKeep = await prisma.externalPost.findMany({
+        where: { feedId: feed.id },
+        orderBy: { pubDate: 'desc' },
+        take: data.maxPosts,
+        select: { id: true },
+      });
+      const keepIds = toKeep.map(p => p.id);
+      await prisma.externalPost.deleteMany({
+        where: { feedId: feed.id, id: { notIn: keepIds } },
+      });
+    }
+  }
 
   res.json({ feed: updated });
 });
@@ -225,7 +248,12 @@ export async function aggregateExternalFeed(prisma, feed) {
 
   const channel = parsed?.rss?.channel;
   const atomFeed = parsed?.feed;
-  const items = channel?.item || atomFeed?.entry || [];
+  let items = channel?.item || atomFeed?.entry || [];
+
+  // Limit to maxPosts most recent items
+  if (feed.maxPosts && items.length > feed.maxPosts) {
+    items = items.slice(0, feed.maxPosts);
+  }
 
   // Update feed metadata if it changed
   const meta = {};
@@ -281,6 +309,23 @@ export async function aggregateExternalFeed(prisma, feed) {
     where: { id: feed.id },
     data: { lastFetched: new Date(), errorCount: 0, ...meta },
   });
+
+  // Prune oldest posts if over maxPosts limit
+  if (feed.maxPosts) {
+    const postCount = await prisma.externalPost.count({ where: { feedId: feed.id } });
+    if (postCount > feed.maxPosts) {
+      const toKeep = await prisma.externalPost.findMany({
+        where: { feedId: feed.id },
+        orderBy: { pubDate: 'desc' },
+        take: feed.maxPosts,
+        select: { id: true },
+      });
+      const keepIds = toKeep.map(p => p.id);
+      await prisma.externalPost.deleteMany({
+        where: { feedId: feed.id, id: { notIn: keepIds } },
+      });
+    }
+  }
 
   return newCount;
 }

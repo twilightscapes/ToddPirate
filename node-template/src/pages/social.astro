@@ -11,6 +11,9 @@ import { siteConfig } from '../lib/config';
         <button id="tab-timeline" class="rounded bg-zinc-800 px-3 py-1.5 text-sm hover:bg-zinc-700 transition active-tab">
           Timeline
         </button>
+        <button id="tab-bluesky" class="rounded bg-zinc-800 px-3 py-1.5 text-sm hover:bg-zinc-700 transition">
+          Bluesky
+        </button>
         <button id="tab-discover" class="rounded bg-zinc-800 px-3 py-1.5 text-sm hover:bg-zinc-700 transition">
           Discover
         </button>
@@ -47,6 +50,7 @@ import { siteConfig } from '../lib/config';
 
   let currentPage = 1;
   let currentTab = 'timeline';
+  let bskyCursor = null;
 
   // Tab switching
   document.querySelectorAll('[id^="tab-"]').forEach(btn => {
@@ -55,6 +59,7 @@ import { siteConfig } from '../lib/config';
       btn.classList.add('active-tab', 'bg-zinc-600');
       currentTab = btn.id.replace('tab-', '');
       currentPage = 1;
+      bskyCursor = null;
       loadFeed();
     });
   });
@@ -73,6 +78,12 @@ import { siteConfig } from '../lib/config';
 
       if (currentTab === 'timeline' && token) {
         url = `${hubUrl}/api/timeline?page=${currentPage}`;
+      } else if (currentTab === 'bluesky' && token) {
+        url = `${hubUrl}/api/bluesky-feed/timeline${bskyCursor ? `?cursor=${encodeURIComponent(bskyCursor)}` : ''}`;
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        renderBskyPosts(data, append);
+        return;
       } else if (currentTab === 'discover' || (currentTab === 'timeline' && !token)) {
         url = `${hubUrl}/api/timeline/discover?page=${currentPage}`;
       } else if (currentTab === 'people') {
@@ -199,6 +210,97 @@ import { siteConfig } from '../lib/config';
 
     loadMoreContainer.classList.toggle('hidden', !data.hasMore);
     attachInteractionListeners();
+    attachShareListeners();
+  }
+
+  function renderBskyPosts(data, append) {
+    const posts = data.posts || [];
+    bskyCursor = data.cursor || null;
+
+    const html = posts.map(post => {
+      const embed = post.embedData || {};
+      let embedHtml = '';
+
+      // Multiple images
+      if (embed.images?.length > 1) {
+        embedHtml += `<div class="grid grid-cols-2 gap-1 mt-2 rounded overflow-hidden">
+          ${embed.images.map(img => `<img src="${escapeHtml(img.fullsize || img.thumb)}" alt="${escapeHtml(img.alt || '')}" class="w-full object-cover aspect-square" loading="lazy" onerror="this.style.display='none'" />`).join('')}
+        </div>`;
+      }
+
+      // Single image
+      if (embed.images?.length === 1) {
+        embedHtml += `<div class="mt-2 bg-black flex justify-center rounded overflow-hidden"><img src="${escapeHtml(embed.images[0].fullsize || embed.images[0].thumb)}" alt="${escapeHtml(embed.images[0].alt || '')}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>`;
+      }
+
+      // Video
+      if (embed.video?.playlist) {
+        embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
+          <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full">
+            <source src="${escapeHtml(embed.video.playlist)}" type="application/x-mpegURL" />
+          </video>
+        </div>`;
+      }
+
+      // External link card
+      if (embed.external?.uri) {
+        embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-zinc-700 overflow-hidden hover:border-zinc-500 transition">
+          ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
+          <div class="p-3">
+            <div class="text-sm font-medium text-zinc-200 line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
+            ${embed.external.description ? `<div class="text-xs text-zinc-500 mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
+          </div>
+        </a>`;
+      }
+
+      // Quote
+      if (embed.quote?.text) {
+        embedHtml += `<div class="mt-2 rounded border border-zinc-700 p-3 bg-zinc-800/50">
+          <div class="text-xs text-zinc-400 mb-1">
+            <span class="font-medium text-zinc-300">${escapeHtml(embed.quote.author)}</span>
+            <span class="text-zinc-500 ml-1">@${escapeHtml(embed.quote.handle)}</span>
+          </div>
+          <p class="text-sm text-zinc-300 line-clamp-4">${escapeHtml(embed.quote.text)}</p>
+        </div>`;
+      }
+
+      const repostLine = post.repostBy
+        ? `<div class="text-xs text-zinc-500 mb-2">🔁 Reposted by ${escapeHtml(post.repostBy.displayName)}</div>`
+        : '';
+
+      return `
+        <article class="rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden">
+          <div class="p-4">
+            ${repostLine}
+            <div class="flex items-center gap-3 mb-3">
+              ${post.author.avatar ? `<img src="${escapeHtml(post.author.avatar)}" class="h-10 w-10 rounded-full" />` : '<div class="h-10 w-10 rounded-full bg-zinc-700"></div>'}
+              <div>
+                <a href="https://bsky.app/profile/${escapeHtml(post.author.handle)}" target="_blank" class="font-medium text-sm hover:underline">${escapeHtml(post.author.displayName)}</a>
+                <div class="text-xs text-zinc-500">@${escapeHtml(post.author.handle)}</div>
+              </div>
+              <time class="text-xs text-zinc-500 ml-auto">${new Date(post.pubDate).toLocaleDateString()}</time>
+            </div>
+            ${post.text ? `<p class="text-sm whitespace-pre-wrap mb-2">${formatText(post.text)}</p>` : ''}
+            ${embedHtml}
+            <div class="mt-3 flex items-center gap-4 text-xs text-zinc-500">
+              <span>♡ ${post.likeCount}</span>
+              <span>🔁 ${post.repostCount}</span>
+              <span>💬 ${post.replyCount}</span>
+              <button class="share-btn hover:text-green-400 transition ml-auto" data-url="${escapeHtml(post.link)}" data-title="${escapeHtml(post.text?.slice(0, 100) || '')}">↗ Share</button>
+              <a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-white">↗ Open</a>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    if (append) {
+      feedContainer.insertAdjacentHTML('beforeend', html);
+    } else {
+      feedContainer.innerHTML = html || '<div class="text-center py-8 text-zinc-500">Connect your Bluesky account in Settings to see your feed</div>';
+    }
+
+    loadMoreContainer.classList.toggle('hidden', !bskyCursor);
     attachShareListeners();
   }
 

@@ -39,6 +39,7 @@ model User {
   reports       Report[] @relation("reporter")
   reportedBy    Report[] @relation("reported")
   externalFeeds ExternalFeed[]
+  squads        Squad[]
 
   @@index([username])
 }
@@ -175,4 +176,34 @@ model ExternalPost {
   @@unique([feedId, guid])
   @@index([feedId])
   @@index([pubDate(sort: Desc)])
+}
+
+model Squad {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  activityWindow Int     @default(60) // minutes: 15–720 (15min to 12hr)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members       SquadMember[]
+
+  @@index([userId])
+}
+
+model SquadMember {
+  id            String   @id @default(cuid())
+  squadId       String
+  handle        String
+  did           String?
+  displayName   String?
+  avatarUrl     String?
+  lastPostAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  squad         Squad    @relation(fields: [squadId], references: [id], onDelete: Cascade)
+
+  @@unique([squadId, handle])
+  @@index([squadId])
 }

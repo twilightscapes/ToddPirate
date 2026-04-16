@@ -18,6 +18,7 @@ import adminRoutes from './routes/admin.js';
 import directoryRoutes from './routes/directory.js';
 import decapRoutes from './routes/decap.js';
 import blueskyRoutes from './routes/bluesky.js';
+import blueskyFeedRoutes from './routes/bluesky-feed.js';
 import setupRoutes from './routes/setup.js';
 import externalFeedRoutes from './routes/external-feeds.js';
 import { aggregateAllFeeds } from './services/aggregator.js';
@@ -78,6 +79,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/directory', directoryRoutes);
 app.use('/api/decap', decapRoutes);
 app.use('/api/bluesky', blueskyRoutes);
+app.use('/api/bluesky-feed', blueskyFeedRoutes);
 app.use('/api/setup', setupRoutes);
 app.use('/api/external-feeds', externalFeedRoutes);
 

@@ -16,6 +16,9 @@ const { postSlug } = Astro.props;
     <button class="comment-toggle hover:text-blue-400 transition cursor-pointer" data-slug={postSlug}>
       💬 <span class="comment-count">0</span> Comments
     </button>
+    <button class="post-share-btn hover:text-green-400 transition cursor-pointer" data-slug={postSlug}>
+      ↗ Share
+    </button>
     <a class="bsky-link hidden text-blue-400 hover:text-blue-300 transition text-xs" data-slug={postSlug} href="#" target="_blank" rel="noopener">
       View on Bluesky ↗
     </a>
@@ -268,6 +271,58 @@ const { postSlug } = Astro.props;
       } catch (e) {
         console.warn('Comment failed:', e);
       }
+    });
+  });
+
+  // --- Share modal ---
+  if (!document.getElementById('share-modal-overlay')) {
+    const shareOverlay = document.createElement('div');
+    shareOverlay.id = 'share-modal-overlay';
+    shareOverlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;justify-content:center;align-items:center';
+    shareOverlay.innerHTML = `
+      <div id="share-modal" style="background:#18181b;border:1px solid #3f3f46;border-radius:.75rem;padding:1.5rem;width:20rem;max-width:90vw">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <h3 style="font-weight:600;font-size:1rem">Share</h3>
+          <button id="share-close" style="color:#a1a1aa;font-size:1.25rem;cursor:pointer;background:none;border:none">✕</button>
+        </div>
+        <div id="share-links" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem"></div>
+      </div>`;
+    document.body.appendChild(shareOverlay);
+    shareOverlay.addEventListener('click', (e) => { if (e.target === shareOverlay) shareOverlay.style.display = 'none'; });
+    document.getElementById('share-close').addEventListener('click', () => document.getElementById('share-modal-overlay').style.display = 'none');
+  }
+
+  function openPostShareModal(url, title) {
+    const overlay = document.getElementById('share-modal-overlay');
+    const enc = encodeURIComponent;
+    const links = [
+      { label: '𝕏 Twitter', href: `https://twitter.com/intent/tweet?text=${enc(title)}&url=${enc(url)}` },
+      { label: '📘 Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${enc(url)}` },
+      { label: '💼 LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${enc(url)}` },
+      { label: '📌 Pinterest', href: `https://pinterest.com/pin/create/button/?url=${enc(url)}&description=${enc(title)}` },
+      { label: '🔗 Reddit', href: `https://www.reddit.com/submit?url=${enc(url)}&title=${enc(title)}` },
+      { label: '📧 Email', href: `mailto:?subject=${enc(title)}&body=${enc(url)}` },
+    ];
+    const linksHtml = links.map(l =>
+      `<a href="${l.href}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:#27272a;color:#e4e4e7;font-size:.875rem;text-decoration:none;transition:background .15s" onmouseover="this.style.background='#3f3f46'" onmouseout="this.style.background='#27272a'">${l.label}</a>`
+    ).join('');
+    const copyBtn = `<button id="share-copy" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:#27272a;color:#e4e4e7;font-size:.875rem;border:none;cursor:pointer;transition:background .15s;grid-column:span 2" onmouseover="this.style.background='#3f3f46'" onmouseout="this.style.background='#27272a'">📋 Copy Link</button>`;
+    document.getElementById('share-links').innerHTML = linksHtml + copyBtn;
+    document.getElementById('share-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        document.getElementById('share-copy').textContent = '✓ Copied!';
+        setTimeout(() => document.getElementById('share-copy').textContent = '📋 Copy Link', 2000);
+      } catch {}
+    });
+    overlay.style.display = 'flex';
+  }
+
+  document.querySelectorAll('.post-share-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = window.location.href;
+      const title = document.querySelector('h1')?.textContent || document.title;
+      openPostShareModal(url, title);
     });
   });
 

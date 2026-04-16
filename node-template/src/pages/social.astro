@@ -114,14 +114,16 @@ import { siteConfig } from '../lib/config';
           </div>`;
 
       // Interaction bar: only Pirate posts have likes/comments
+      const shareBtn = `<button class="share-btn hover:text-green-400 transition" data-url="${escapeHtml(post.link || '')}" data-title="${escapeHtml(post.title || '')}">↗ Share</button>`;
       const actionsHtml = isExternal
-        ? `<a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-white ml-auto">↗ Read</a>`
+        ? `<a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-white">↗ Read</a>${shareBtn}`
         : `<button class="like-btn hover:text-red-400 transition ${post.hasLiked ? 'text-red-400' : ''}" data-post-id="${post.id}">
               ${post.hasLiked ? '♥' : '♡'} ${post.likeCount || post._count?.likes || 0}
             </button>
             <button class="comment-btn hover:text-blue-400 transition" data-post-id="${post.id}">
               💬 ${post.commentCount || post._count?.comments || 0}
             </button>
+            ${shareBtn}
             ${post.link ? `<a href="${escapeHtml(post.link)}" target="_blank" class="hover:text-white ml-auto">↗ View</a>` : ''}`;
 
       // Build embed HTML for rich content (Bluesky images, videos, link cards, quotes)
@@ -197,6 +199,7 @@ import { siteConfig } from '../lib/config';
 
     loadMoreContainer.classList.toggle('hidden', !data.hasMore);
     attachInteractionListeners();
+    attachShareListeners();
   }
 
   function renderPeople(data, append) {
@@ -224,6 +227,7 @@ import { siteConfig } from '../lib/config';
 
     loadMoreContainer.classList.toggle('hidden', !data.hasMore);
     attachInteractionListeners();
+    attachShareListeners();
   }
 
   function attachInteractionListeners() {
@@ -290,6 +294,54 @@ import { siteConfig } from '../lib/config';
     currentPage++;
     loadFeed(true);
   });
+
+  // --- Share modal ---
+  const shareOverlay = document.createElement('div');
+  shareOverlay.id = 'share-modal-overlay';
+  shareOverlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;justify-content:center;align-items:center';
+  shareOverlay.innerHTML = `
+    <div id="share-modal" style="background:#18181b;border:1px solid #3f3f46;border-radius:.75rem;padding:1.5rem;width:20rem;max-width:90vw">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h3 style="font-weight:600;font-size:1rem">Share</h3>
+        <button id="share-close" style="color:#a1a1aa;font-size:1.25rem;cursor:pointer;background:none;border:none">✕</button>
+      </div>
+      <div id="share-links" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem"></div>
+    </div>`;
+  document.body.appendChild(shareOverlay);
+
+  shareOverlay.addEventListener('click', (e) => { if (e.target === shareOverlay) shareOverlay.style.display = 'none'; });
+  document.getElementById('share-close').addEventListener('click', () => shareOverlay.style.display = 'none');
+
+  function openShareModal(url, title) {
+    const enc = encodeURIComponent;
+    const links = [
+      { label: '𝕏 Twitter', href: `https://twitter.com/intent/tweet?text=${enc(title)}&url=${enc(url)}` },
+      { label: '📘 Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${enc(url)}` },
+      { label: '💼 LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${enc(url)}` },
+      { label: '📌 Pinterest', href: `https://pinterest.com/pin/create/button/?url=${enc(url)}&description=${enc(title)}` },
+      { label: '🔗 Reddit', href: `https://www.reddit.com/submit?url=${enc(url)}&title=${enc(title)}` },
+      { label: '📧 Email', href: `mailto:?subject=${enc(title)}&body=${enc(url)}` },
+    ];
+    const linksHtml = links.map(l =>
+      `<a href="${l.href}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:#27272a;color:#e4e4e7;font-size:.875rem;text-decoration:none;transition:background .15s" onmouseover="this.style.background='#3f3f46'" onmouseout="this.style.background='#27272a'">${l.label}</a>`
+    ).join('');
+    const copyBtn = `<button id="share-copy" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:#27272a;color:#e4e4e7;font-size:.875rem;border:none;cursor:pointer;transition:background .15s;grid-column:span 2" onmouseover="this.style.background='#3f3f46'" onmouseout="this.style.background='#27272a'">📋 Copy Link</button>`;
+    document.getElementById('share-links').innerHTML = linksHtml + copyBtn;
+    document.getElementById('share-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        document.getElementById('share-copy').textContent = '✓ Copied!';
+        setTimeout(() => document.getElementById('share-copy').textContent = '📋 Copy Link', 2000);
+      } catch { /* fallback */ }
+    });
+    shareOverlay.style.display = 'flex';
+  }
+
+  function attachShareListeners() {
+    document.querySelectorAll('.share-btn').forEach(btn => {
+      btn.addEventListener('click', () => openShareModal(btn.dataset.url, btn.dataset.title));
+    });
+  }
 
   // Auto-load if signed in
   if (token) {

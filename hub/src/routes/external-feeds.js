@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { XMLParser } from 'fast-xml-parser';
+import { Prisma } from '@prisma/client';
 
 const router = Router();
 
@@ -412,12 +413,14 @@ function isBlueskyFeed(feedUrl) {
  */
 async function enrichBlueskyPosts(prisma, feedId) {
   // Find posts with AT URI guids that don't yet have embed data
+  // Use Prisma.DbNull for proper JSON null matching
   const posts = await prisma.externalPost.findMany({
     where: {
       feedId,
       guid: { startsWith: 'at://' },
       OR: [
-        { embedData: { equals: null } },
+        { embedData: { equals: Prisma.DbNull } },
+        { embedData: { equals: Prisma.JsonNull } },
         { embedData: { equals: {} } },
       ],
     },

@@ -160,7 +160,7 @@ import { siteConfig } from '../lib/config';
       } else if (currentTab === 'timeline' && token) {
         url = `${hubUrl}/api/timeline?page=${currentPage}`;
       } else if (currentTab === 'bluesky' && token) {
-        // Use browser-side Bluesky session with thin hub proxy
+        // Use browser-side Bluesky session — call bsky.social directly (no proxy)
         const session = await ensureBskySession();
         console.log('[PS] Bluesky session:', session ? 'got accessJwt' : 'NONE');
         if (!session?.accessJwt) {
@@ -168,32 +168,38 @@ import { siteConfig } from '../lib/config';
           return;
         }
         try {
-          const proxyUrl = `${hubUrl}/api/bluesky-feed/proxy/timeline?limit=30${bskyCursor ? `&cursor=${encodeURIComponent(bskyCursor)}` : ''}`;
-          console.log('[PS] Fetching timeline via proxy...');
-          const res = await fetchWithTimeout(proxyUrl, {
+          let bskyUrl = `https://bsky.social/xrpc/app.bsky.feed.getTimeline?limit=30`;
+          if (bskyCursor) bskyUrl += `&cursor=${encodeURIComponent(bskyCursor)}`;
+          console.log('[PS] Fetching timeline direct from bsky.social...');
+          const res = await fetchWithTimeout(bskyUrl, {
             headers: { 'Authorization': `Bearer ${session.accessJwt}` },
           }, 10000);
-          console.log('[PS] Proxy response:', res.status);
+          console.log('[PS] bsky.social response:', res.status);
           if (res.ok) {
-            const data = await res.json();
-            renderBskyPosts(data, append);
+            const raw = await res.json();
+            const posts = (raw.feed || []).map(item => normalizeBskyPostClient(item));
+            renderBskyPosts({ posts, cursor: raw.cursor || null }, append);
             return;
           }
           // If 401/expired, refresh and retry once
           if (res.status === 401 || res.status === 400) {
+            console.log('[PS] Token expired, refreshing...');
             const refreshed = await refreshBskySession();
             if (refreshed?.accessJwt) {
-              const retry = await fetchWithTimeout(proxyUrl, {
+              const retry = await fetchWithTimeout(bskyUrl, {
                 headers: { 'Authorization': `Bearer ${refreshed.accessJwt}` },
               }, 10000);
               if (retry.ok) {
-                const data = await retry.json();
-                renderBskyPosts(data, append);
+                const raw = await retry.json();
+                const posts = (raw.feed || []).map(item => normalizeBskyPostClient(item));
+                renderBskyPosts({ posts, cursor: raw.cursor || null }, append);
                 return;
               }
             }
           }
-        } catch {}
+        } catch (err) {
+          console.error('[PS] Direct bsky.social error:', err.message);
+        }
         // Fallback: own posts via public API
         if (session.handle) {
           try {

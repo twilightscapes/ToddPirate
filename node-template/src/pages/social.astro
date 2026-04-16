@@ -86,10 +86,30 @@ import { siteConfig } from '../lib/config';
       } else if (currentTab === 'timeline' && token) {
         url = `${hubUrl}/api/timeline?page=${currentPage}`;
       } else if (currentTab === 'bluesky' && token) {
+        // Try hub proxy first, fall back to public API with user's own handle
         url = `${hubUrl}/api/bluesky-feed/timeline${bskyCursor ? `?cursor=${encodeURIComponent(bskyCursor)}` : ''}`;
-        const res = await fetch(url, { headers });
-        const data = await res.json();
-        renderBskyPosts(data, append);
+        try {
+          const res = await fetch(url, { headers });
+          if (res.ok) {
+            const data = await res.json();
+            renderBskyPosts(data, append);
+            return;
+          }
+        } catch {}
+        // Fallback: if hub is down or errored, fetch own feed via public API
+        if (myHandle) {
+          try {
+            const pubUrl = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(myHandle)}&limit=30${bskyCursor ? `&cursor=${encodeURIComponent(bskyCursor)}` : ''}`;
+            const pubRes = await fetch(pubUrl);
+            if (pubRes.ok) {
+              const pubData = await pubRes.json();
+              const posts = (pubData.feed || []).map(item => normalizeBskyPostClient(item));
+              renderBskyPosts({ posts, cursor: pubData.cursor || null }, append);
+              return;
+            }
+          } catch {}
+        }
+        feedContainer.innerHTML = '<div class="text-center py-8 text-zinc-500">Connect your Bluesky account in Settings to see your feed</div>';
         return;
       } else if (currentTab === 'discover' || (currentTab === 'timeline' && !token)) {
         url = `${hubUrl}/api/timeline/discover?page=${currentPage}`;
@@ -482,6 +502,81 @@ import { siteConfig } from '../lib/config';
     });
   }
 
+  // === CLIENT-SIDE BLUESKY HELPERS (using public API — no hub proxy needed) ===
+
+  function normalizeBskyPostClient(item) {
+    const post = item.post;
+    const reason = item.reason;
+    const embed = post.embed;
+    let embedData = {};
+    let imageUrl = null;
+
+    if (embed?.$type === 'app.bsky.embed.images#view') {
+      embedData.images = embed.images.map(img => ({ thumb: img.thumb, fullsize: img.fullsize, alt: img.alt || '' }));
+      if (embed.images[0]) imageUrl = embed.images[0].fullsize || embed.images[0].thumb;
+    }
+    if (embed?.$type === 'app.bsky.embed.video#view') {
+      embedData.video = { playlist: embed.playlist, thumb: embed.thumbnail, alt: embed.alt || '' };
+    }
+    if (embed?.$type === 'app.bsky.embed.external#view') {
+      embedData.external = { uri: embed.external.uri, title: embed.external.title, description: embed.external.description, thumb: embed.external.thumb };
+    }
+    if (embed?.$type === 'app.bsky.embed.recordWithMedia#view') {
+      const media = embed.media;
+      if (media?.$type === 'app.bsky.embed.images#view') {
+        embedData.images = media.images.map(img => ({ thumb: img.thumb, fullsize: img.fullsize, alt: img.alt || '' }));
+        if (media.images[0]) imageUrl = media.images[0].fullsize || media.images[0].thumb;
+      }
+      if (media?.$type === 'app.bsky.embed.video#view') {
+        embedData.video = { playlist: media.playlist, thumb: media.thumbnail, alt: media.alt || '' };
+      }
+      const rec = embed.record?.record;
+      if (rec?.value?.text) {
+        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
+      }
+    }
+    if (embed?.$type === 'app.bsky.embed.record#view') {
+      const rec = embed.record;
+      if (rec?.value?.text) {
+        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
+      }
+    }
+
+    return {
+      uri: post.uri, cid: post.cid,
+      author: { handle: post.author.handle, displayName: post.author.displayName || post.author.handle, avatar: post.author.avatar || '', did: post.author.did },
+      text: post.record?.text || '',
+      pubDate: post.indexedAt,
+      imageUrl,
+      embedData: Object.keys(embedData).length ? embedData : null,
+      likeCount: post.likeCount || 0,
+      repostCount: post.repostCount || 0,
+      replyCount: post.replyCount || 0,
+      repostBy: reason?.$type === 'app.bsky.feed.defs#reasonRepost'
+        ? { handle: reason.by.handle, displayName: reason.by.displayName || reason.by.handle }
+        : null,
+      link: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split('/').pop()}`,
+    };
+  }
+
+  async function fetchAuthorFeedDirect(handle, limit = 10) {
+    const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=${limit}&filter=posts_and_author_threads`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+    const data = await res.json();
+    return (data.feed || []).map(item => normalizeBskyPostClient(item));
+  }
+
+  async function fetchSquadFeedDirect(members) {
+    const results = await Promise.allSettled(
+      members.map(m => fetchAuthorFeedDirect(m.did || m.handle, 5))
+    );
+    return results
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.value)
+      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  }
+
   // === SQUADS ===
   let myAvatar = null;
   let myHandle = null;
@@ -704,24 +799,34 @@ import { siteConfig } from '../lib/config';
   }
 
   async function checkSquadActivity(squadId) {
+    const squad = allSquads.find(s => String(s.id) === String(squadId));
+    if (!squad || !squad.members.length) return;
     try {
-      const res = await fetch(`${hubUrl}/api/bluesky-feed/squads/${squadId}/activity`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      data.members.forEach(m => {
+      const cutoff = new Date(Date.now() - squad.activityWindow * 60 * 1000);
+      const results = await Promise.allSettled(
+        squad.members.map(async (m) => {
+          const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(m.did || m.handle)}&limit=1&filter=posts_no_replies`;
+          const res = await fetch(url);
+          if (!res.ok) return { id: m.id, lastPostAt: null, isActive: false };
+          const data = await res.json();
+          const lastPost = data.feed?.[0]?.post;
+          const lastPostAt = lastPost ? lastPost.indexedAt : null;
+          return { id: m.id, lastPostAt, isActive: lastPostAt ? new Date(lastPostAt) >= cutoff : false };
+        })
+      );
+      results.forEach(r => {
+        if (r.status !== 'fulfilled') return;
+        const m = r.value;
         const dot = document.querySelector(`.activity-dot[data-member-id="${m.id}"]`);
-        if (dot) {
-          if (m.isActive) {
-            dot.classList.remove('bg-zinc-600');
-            dot.classList.add('bg-green-500');
-            dot.title = `Last posted ${timeAgo(m.lastPostAt)}`;
-          } else {
-            dot.classList.remove('bg-green-500');
-            dot.classList.add('bg-zinc-600');
-            dot.title = m.lastPostAt ? `Last posted ${timeAgo(m.lastPostAt)}` : 'No recent posts';
-          }
+        if (!dot) return;
+        if (m.isActive) {
+          dot.classList.remove('bg-zinc-600');
+          dot.classList.add('bg-green-500');
+          dot.title = `Last posted ${timeAgo(m.lastPostAt)}`;
+        } else {
+          dot.classList.remove('bg-green-500');
+          dot.classList.add('bg-zinc-600');
+          dot.title = m.lastPostAt ? `Last posted ${timeAgo(m.lastPostAt)}` : 'No recent posts';
         }
       });
     } catch {}
@@ -802,13 +907,12 @@ import { siteConfig } from '../lib/config';
           btn.textContent = 'View Squad Feed';
           return;
         }
+        const squad = allSquads.find(s => String(s.id) === btn.dataset.squadId);
+        if (!squad || !squad.members.length) return;
         btn.textContent = 'Loading...';
         try {
-          const res = await fetch(`${hubUrl}/api/bluesky-feed/squads/${btn.dataset.squadId}/feed`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          feedEl.innerHTML = (data.posts || []).map(post => renderSquadCard(post)).join('') || '<div class="text-center py-4 text-zinc-500">No posts</div>';
+          const posts = await fetchSquadFeedDirect(squad.members);
+          feedEl.innerHTML = posts.map(post => renderSquadCard(post)).join('') || '<div class="text-center py-4 text-zinc-500">No posts</div>';
           feedEl.classList.remove('hidden');
           btn.textContent = 'Hide Squad Feed';
           initHlsVideos();
@@ -829,11 +933,8 @@ import { siteConfig } from '../lib/config';
         if (!feedEl || !feedBtn) return;
         feedBtn.textContent = `Loading @${handle}...`;
         try {
-          const res = await fetch(`${hubUrl}/api/bluesky-feed/author/${encodeURIComponent(handle)}?limit=10`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          feedEl.innerHTML = (data.posts || []).map(post => renderSquadCard(post)).join('') || '<div class="text-center py-4 text-zinc-500">No posts</div>';
+          const data = await fetchAuthorFeedDirect(handle, 10);
+          feedEl.innerHTML = data.map(post => renderSquadCard(post)).join('') || '<div class="text-center py-4 text-zinc-500">No posts</div>';
           feedEl.classList.remove('hidden');
           feedBtn.textContent = 'Hide Squad Feed';
           initHlsVideos();
@@ -921,6 +1022,8 @@ import { siteConfig } from '../lib/config';
 
   // Auto-load if signed in
   if (token) {
+    // Fetch Bluesky handle in background for public API fallback & squads
+    initSquadsProfile();
     loadFeed();
   }
 </script>

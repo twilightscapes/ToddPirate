@@ -72,7 +72,10 @@ router.post('/', authenticate, async (req, res) => {
       },
     });
 
-    res.status(201).json({ feed });
+    // Immediately fetch existing posts from the feed
+    const newPosts = await aggregateExternalFeed(prisma, feed);
+
+    res.status(201).json({ feed, newPosts });
   } catch (err) {
     if (err.code === 'P2002') {
       return res.status(409).json({ error: 'You are already following this feed' });

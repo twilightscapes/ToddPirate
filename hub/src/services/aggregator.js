@@ -75,7 +75,7 @@ export async function aggregateUserFeed(prisma, user) {
     const guid = item.guid?.['#text'] || item.guid || item.id || item.link;
     if (!guid) continue;
 
-    // Check if post already exists
+    // Check if post already exists by guid
     const existing = await prisma.post.findUnique({ where: { guid } });
 
     // Extract photo-specific fields (custom RSS namespace)
@@ -83,18 +83,41 @@ export async function aggregateUserFeed(prisma, user) {
     const exifData = extractExifData(item);
     const gallery = extractGallery(item);
     const tags = extractTags(item);
+    const itemLink = item.link?.['@_href'] || item.link || '';
 
     if (existing) {
-      // Update existing post if key fields changed
+      // Update existing post if key fields changed (including link)
       const updates = {};
       if (imageUrl && imageUrl !== existing.imageUrl) updates.imageUrl = imageUrl;
       if (item.title && item.title !== existing.title) updates.title = item.title;
       const desc = item.description || item.summary || '';
       if (desc && desc !== existing.description) updates.description = desc;
+      if (itemLink && itemLink !== existing.link) updates.link = itemLink;
       if (Object.keys(updates).length > 0) {
         await prisma.post.update({ where: { guid }, data: updates });
       }
       continue;
+    }
+
+    // No guid match — check if this is a renamed post (same user + title + close pubDate)
+    const itemTitle = item.title || '';
+    if (itemTitle) {
+      const renamed = await prisma.post.findFirst({
+        where: {
+          userId: user.id,
+          title: itemTitle,
+          guid: { not: guid },
+        },
+      });
+      if (renamed) {
+        // Update the old record's guid and link to match the renamed file
+        const updates = { guid, link: itemLink };
+        if (imageUrl && imageUrl !== renamed.imageUrl) updates.imageUrl = imageUrl;
+        const desc = item.description || item.summary || '';
+        if (desc && desc !== renamed.description) updates.description = desc;
+        await prisma.post.update({ where: { id: renamed.id }, data: updates });
+        continue;
+      }
     }
 
     try {
@@ -105,7 +128,7 @@ export async function aggregateUserFeed(prisma, user) {
           title: item.title || 'Untitled',
           description: item.description || item.summary || '',
           content: item['content:encoded'] || item.content?.['#text'] || item.content || '',
-          link: item.link?.['@_href'] || item.link || '',
+          link: itemLink,
           pubDate: parseDate(item.pubDate || item.published || item.updated),
           imageUrl,
           thumbnailUrl: item['photo:thumbnail'] || item['media:thumbnail']?.['@_url'] || null,

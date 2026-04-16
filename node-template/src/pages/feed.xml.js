@@ -49,7 +49,7 @@ export async function GET(context) {
       title: post.data.title,
       pubDate: post.data.pubDate,
       description: post.data.description || '',
-      link: `/posts/${post.id}/`,
+      link: `/posts/${post.id.replace(/\.(md|mdx)$/, '')}/`,
       categories: post.data.tags,
       customData: customXml,
     };
@@ -77,9 +77,9 @@ export async function GET(context) {
     site: context.site,
     items: allItems,
     xmlns: {
-      photo: 'https://piratesocial.github.io/ns/photo',
+      photo: 'https://piratesocial.app/ns/photo',
       media: 'http://search.yahoo.com/mrss/',
-      social: 'https://piratesocial.github.io/ns/social',
+      social: 'https://piratesocial.app/ns/social',
     },
     customData: `
       <language>en-us</language>

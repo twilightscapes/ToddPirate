@@ -19,7 +19,9 @@ import directoryRoutes from './routes/directory.js';
 import decapRoutes from './routes/decap.js';
 import blueskyRoutes from './routes/bluesky.js';
 import setupRoutes from './routes/setup.js';
+import externalFeedRoutes from './routes/external-feeds.js';
 import { aggregateAllFeeds } from './services/aggregator.js';
+import { aggregateAllExternalFeeds } from './routes/external-feeds.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -44,6 +46,7 @@ app.use(cors({
     if (origin.endsWith('.github.io')) return callback(null, true);
     // Allow the hub's own pages (setup wizard, landing page)
     if (origin.endsWith('.up.railway.app')) return callback(null, true);
+    if (origin.endsWith('piratesocial.app')) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(null, false);
   },
@@ -76,6 +79,7 @@ app.use('/api/directory', directoryRoutes);
 app.use('/api/decap', decapRoutes);
 app.use('/api/bluesky', blueskyRoutes);
 app.use('/api/setup', setupRoutes);
+app.use('/api/external-feeds', externalFeedRoutes);
 
 // --- SSE endpoint for real-time updates ---
 const sseClients = new Map(); // userId -> Set<res>
@@ -115,6 +119,7 @@ cron.schedule(`*/${pollInterval} * * * *`, async () => {
   console.log(`[cron] Aggregating feeds...`);
   try {
     await aggregateAllFeeds(prisma);
+    await aggregateAllExternalFeeds(prisma);
     console.log(`[cron] Feed aggregation complete`);
   } catch (err) {
     console.error(`[cron] Feed aggregation failed:`, err);

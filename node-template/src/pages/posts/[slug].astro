@@ -4,11 +4,11 @@ import ExifDisplay from '../../components/ExifDisplay.astro';
 import PhotoGallery from '../../components/PhotoGallery.astro';
 import SocialActions from '../../components/SocialActions.astro';
 import { getCollection } from 'astro:content';
-import { withBase } from '../../lib/config';
+import { withBase, cleanSlug } from '../../lib/config';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
-  return posts.map(post => ({ params: { slug: post.id }, props: { post } }));
+  return posts.map(post => ({ params: { slug: cleanSlug(post.id) }, props: { post } }));
 }
 
 const { post } = Astro.props;
@@ -59,6 +59,6 @@ const { Content } = await post.render();
     )}
 
     <!-- Social interactions (client-side) -->
-    <SocialActions postSlug={post.id} />
+    <SocialActions postSlug={cleanSlug(post.id)} />
   </article>
 </BaseLayout>

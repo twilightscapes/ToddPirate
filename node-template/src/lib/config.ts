@@ -8,6 +8,11 @@ export function withBase(path: string): string {
   return `${base}${path}`;
 }
 
+/** Strip file extension from content collection IDs for clean URLs */
+export function cleanSlug(id: string): string {
+  return id.replace(/\.(md|mdx)$/, '');
+}
+
 /** Site-wide configuration — edit via /admin or settings.json */
 export const siteConfig = {
   title: settings.title || 'My Photo Site',
@@ -18,7 +23,7 @@ export const siteConfig = {
   location: settings.location || '',
   camera: settings.camera || '',
   siteUrl: import.meta.env.SITE || (settings.github ? `https://${settings.github}.github.io` : ''),
-  hubUrl: 'https://piratesocial-hub-production.up.railway.app',
+  hubUrl: 'https://piratesocial.app',
   social: {
     github: settings.github || '',
     instagram: settings.instagram || '',

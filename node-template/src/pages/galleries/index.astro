@@ -13,7 +13,7 @@ const galleries = (await getCollection('galleries'))
   <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
     {galleries.map((gallery) => (
       <a
-        href={`${base}/galleries/${gallery.id}`}
+        href={`${base}/galleries/${gallery.id.replace(/\.(md|mdx)$/, '')}`}
         class="group overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 transition hover:border-zinc-600"
       >
         {gallery.data.coverImage && (

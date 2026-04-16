@@ -58,7 +58,7 @@ piratesocial/
 3. Deploy to Railway:
    - Add a Postgres plugin
    - Set environment variables from `.env.example`
-4. The hub is live at `your-hub.railway.app`
+4. The hub is live at `piratesocial.app`
 
 ### User Nodes (each user)
 
@@ -100,8 +100,8 @@ piratesocial/
 Posts syndicate with extended metadata:
 
 ```xml
-<rss xmlns:photo="https://piratesocial.github.io/ns/photo"
-     xmlns:social="https://piratesocial.github.io/ns/social">
+<rss xmlns:photo="https://piratesocial.app/ns/photo"
+     xmlns:social="https://piratesocial.app/ns/social">
   <channel>
     <social:profilePhoto>...</social:profilePhoto>
     <social:bio>...</social:bio>

@@ -1,0 +1,417 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { siteConfig } from '../../lib/config';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<BaseLayout title="RSS Feeds">
+  <div class="mx-auto max-w-2xl">
+    <h1 class="text-2xl font-bold mb-2">External RSS Feeds</h1>
+    <p class="text-zinc-400 text-sm mb-8">
+      Subscribe to any RSS feed to see updates in your timeline. Blog posts, photo sites, news — anything with an RSS feed.
+    </p>
+
+    <div id="auth-required" class="hidden text-center py-12 text-zinc-500">
+      <p>Sign in to manage your RSS subscriptions</p>
+      <a href={`${base}/social/`} class="mt-4 inline-block rounded bg-white text-black px-4 py-2 text-sm font-medium hover:bg-zinc-200 transition">
+        Sign in with GitHub
+      </a>
+    </div>
+
+    <div id="feeds-app" class="hidden">
+      <!-- Add feed form -->
+      <form id="add-feed-form" class="flex gap-2 mb-8">
+        <input type="url" id="feed-url-input" placeholder="https://example.com/feed.xml" required
+          class="flex-1 rounded bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+        <button type="submit" id="add-feed-btn" class="rounded bg-blue-600 px-4 py-2 text-sm font-medium hover:bg-blue-500 transition whitespace-nowrap">
+          Add Feed
+        </button>
+      </form>
+      <div id="add-error" class="hidden text-red-400 text-sm mb-4"></div>
+
+      <!-- Filter tabs -->
+      <div class="flex gap-2 mb-6">
+        <button id="view-feeds" class="rounded bg-zinc-600 px-3 py-1.5 text-sm transition active-view">
+          My Feeds
+        </button>
+        <button id="view-posts" class="rounded bg-zinc-800 px-3 py-1.5 text-sm hover:bg-zinc-700 transition">
+          All Posts
+        </button>
+      </div>
+
+      <!-- Feeds list -->
+      <div id="feeds-list" class="space-y-3"></div>
+
+      <!-- Posts list (hidden by default) -->
+      <div id="posts-list" class="hidden space-y-4"></div>
+
+      <!-- Feed detail view (hidden by default) -->
+      <div id="feed-detail" class="hidden">
+        <button id="back-to-feeds" class="text-sm text-zinc-400 hover:text-white mb-4 flex items-center gap-1 transition">
+          ← Back to feeds
+        </button>
+        <div id="feed-detail-header" class="mb-6"></div>
+        <div id="feed-detail-posts" class="space-y-4"></div>
+      </div>
+
+      <!-- Loading / empty states -->
+      <div id="loading" class="text-center py-8 text-zinc-500 hidden">Loading...</div>
+      <div id="empty" class="text-center py-8 text-zinc-500 hidden">No feeds yet. Add one above!</div>
+
+      <!-- Load more -->
+      <div id="load-more-container" class="mt-8 text-center hidden">
+        <button id="load-more" class="rounded bg-zinc-800 px-6 py-2 text-sm hover:bg-zinc-700 transition">
+          Load More
+        </button>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script is:inline define:vars={{ hubUrl: siteConfig.hubUrl }}>
+  const token = localStorage.getItem('ps_token');
+
+  if (!token) {
+    document.getElementById('auth-required').classList.remove('hidden');
+  } else {
+    document.getElementById('feeds-app').classList.remove('hidden');
+    loadFeeds();
+  }
+
+  let currentView = 'feeds'; // 'feeds', 'posts', 'detail'
+  let currentFeedId = null;
+  let currentPage = 1;
+
+  // --- View switching ---
+  document.getElementById('view-feeds').addEventListener('click', () => {
+    switchView('feeds');
+  });
+  document.getElementById('view-posts').addEventListener('click', () => {
+    switchView('posts');
+  });
+  document.getElementById('back-to-feeds').addEventListener('click', () => {
+    switchView('feeds');
+  });
+
+  function switchView(view) {
+    currentView = view;
+    currentPage = 1;
+
+    document.getElementById('feeds-list').classList.toggle('hidden', view !== 'feeds');
+    document.getElementById('posts-list').classList.toggle('hidden', view !== 'posts');
+    document.getElementById('feed-detail').classList.toggle('hidden', view !== 'detail');
+    document.getElementById('load-more-container').classList.add('hidden');
+
+    document.getElementById('view-feeds').classList.toggle('bg-zinc-600', view === 'feeds');
+    document.getElementById('view-feeds').classList.toggle('bg-zinc-800', view !== 'feeds');
+    document.getElementById('view-posts').classList.toggle('bg-zinc-600', view === 'posts');
+    document.getElementById('view-posts').classList.toggle('bg-zinc-800', view !== 'posts');
+
+    if (view === 'feeds') loadFeeds();
+    if (view === 'posts') loadAllPosts();
+  }
+
+  // --- Add feed ---
+  document.getElementById('add-feed-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('feed-url-input');
+    const errorEl = document.getElementById('add-error');
+    const btn = document.getElementById('add-feed-btn');
+    const feedUrl = input.value.trim();
+
+    errorEl.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = 'Adding...';
+
+    try {
+      const res = await fetch(`${hubUrl}/api/external-feeds`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedUrl }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorEl.textContent = data.error || 'Failed to add feed';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      input.value = '';
+      loadFeeds();
+    } catch (err) {
+      errorEl.textContent = 'Network error';
+      errorEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Add Feed';
+    }
+  });
+
+  // --- Load feeds list ---
+  async function loadFeeds() {
+    const container = document.getElementById('feeds-list');
+    const loading = document.getElementById('loading');
+    const empty = document.getElementById('empty');
+
+    loading.classList.remove('hidden');
+    empty.classList.add('hidden');
+    container.innerHTML = '';
+
+    try {
+      const res = await fetch(`${hubUrl}/api/external-feeds`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      const feeds = data.feeds || [];
+
+      loading.classList.add('hidden');
+
+      if (feeds.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      container.innerHTML = feeds.map(feed => `
+        <div class="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+          <div class="flex items-start gap-3">
+            ${feed.iconUrl
+              ? `<img src="${esc(feed.iconUrl)}" class="h-8 w-8 rounded mt-0.5" onerror="this.style.display='none'" />`
+              : `<div class="h-8 w-8 rounded bg-zinc-700 flex items-center justify-center text-zinc-400 text-xs mt-0.5">RSS</div>`
+            }
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <h3 class="font-medium text-sm truncate">${esc(feed.title || feed.feedUrl)}</h3>
+                ${feed.active
+                  ? '<span class="text-xs px-1.5 py-0.5 rounded-full bg-green-900 text-green-300">Active</span>'
+                  : '<span class="text-xs px-1.5 py-0.5 rounded-full bg-zinc-700 text-zinc-400">Paused</span>'
+                }
+              </div>
+              ${feed.siteUrl ? `<a href="${esc(feed.siteUrl)}" target="_blank" class="text-xs text-zinc-500 hover:text-zinc-300 truncate block">${esc(feed.siteUrl)}</a>` : ''}
+              <div class="text-xs text-zinc-500 mt-1">
+                ${feed._count?.posts || 0} posts
+                ${feed.lastFetched ? ` · Updated ${timeAgo(feed.lastFetched)}` : ''}
+                ${feed.errorCount > 0 ? ` · <span class="text-yellow-400">${feed.errorCount} errors</span>` : ''}
+              </div>
+            </div>
+            <div class="flex gap-1.5 shrink-0">
+              <button class="view-feed-btn rounded bg-zinc-700 px-2.5 py-1 text-xs hover:bg-zinc-600 transition" data-feed-id="${feed.id}" title="View posts">
+                View
+              </button>
+              <button class="refresh-feed-btn rounded bg-zinc-700 px-2.5 py-1 text-xs hover:bg-zinc-600 transition" data-feed-id="${feed.id}" title="Refresh">
+                ↻
+              </button>
+              <button class="toggle-feed-btn rounded px-2.5 py-1 text-xs transition ${feed.active ? 'bg-yellow-800 hover:bg-yellow-700' : 'bg-green-800 hover:bg-green-700'}" data-feed-id="${feed.id}" data-active="${feed.active}" title="${feed.active ? 'Pause' : 'Resume'}">
+                ${feed.active ? '⏸' : '▶'}
+              </button>
+              <button class="delete-feed-btn rounded bg-red-900 px-2.5 py-1 text-xs hover:bg-red-800 transition" data-feed-id="${feed.id}" title="Remove">
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      attachFeedListeners();
+    } catch (err) {
+      loading.classList.add('hidden');
+      container.innerHTML = '<div class="text-center py-8 text-red-400">Failed to load feeds</div>';
+    }
+  }
+
+  // --- Load all external posts (merged from all feeds) ---
+  async function loadAllPosts(append) {
+    const container = document.getElementById('posts-list');
+    const loading = document.getElementById('loading');
+
+    if (!append) {
+      loading.classList.remove('hidden');
+      container.innerHTML = '';
+    }
+
+    try {
+      const res = await fetch(`${hubUrl}/api/timeline?source=external&page=${currentPage}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      loading.classList.add('hidden');
+
+      const html = renderPostCards(data.posts || []);
+
+      if (append) {
+        container.insertAdjacentHTML('beforeend', html);
+      } else {
+        container.innerHTML = html || '<div class="text-center py-8 text-zinc-500">No external posts yet. Add some feeds and wait for them to sync!</div>';
+      }
+
+      document.getElementById('load-more-container').classList.toggle('hidden', !data.hasMore);
+    } catch (err) {
+      loading.classList.add('hidden');
+      container.innerHTML = '<div class="text-center py-8 text-red-400">Failed to load posts</div>';
+    }
+  }
+
+  // --- Load posts for a specific feed ---
+  async function loadFeedDetail(feedId, append) {
+    const header = document.getElementById('feed-detail-header');
+    const container = document.getElementById('feed-detail-posts');
+    const loading = document.getElementById('loading');
+
+    if (!append) {
+      loading.classList.remove('hidden');
+      container.innerHTML = '';
+    }
+
+    try {
+      const res = await fetch(`${hubUrl}/api/external-feeds/${feedId}/posts?page=${currentPage}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      loading.classList.add('hidden');
+
+      if (!append && data.feed) {
+        header.innerHTML = `
+          <div class="flex items-center gap-3">
+            ${data.feed.iconUrl
+              ? `<img src="${esc(data.feed.iconUrl)}" class="h-10 w-10 rounded" onerror="this.style.display='none'" />`
+              : ''
+            }
+            <div>
+              <h2 class="text-lg font-semibold">${esc(data.feed.title || data.feed.feedUrl)}</h2>
+              ${data.feed.siteUrl ? `<a href="${esc(data.feed.siteUrl)}" target="_blank" class="text-sm text-zinc-400 hover:text-zinc-200">${esc(data.feed.siteUrl)}</a>` : ''}
+            </div>
+            <span class="text-sm text-zinc-500 ml-auto">${data.total} posts</span>
+          </div>
+        `;
+      }
+
+      const html = renderPostCards(data.posts || []);
+
+      if (append) {
+        container.insertAdjacentHTML('beforeend', html);
+      } else {
+        container.innerHTML = html || '<div class="text-center py-8 text-zinc-500">No posts from this feed yet</div>';
+      }
+
+      document.getElementById('load-more-container').classList.toggle('hidden', !data.hasMore);
+    } catch (err) {
+      loading.classList.add('hidden');
+      container.innerHTML = '<div class="text-center py-8 text-red-400">Failed to load posts</div>';
+    }
+  }
+
+  // --- Render post cards ---
+  function renderPostCards(posts) {
+    return posts.map(post => `
+      <article class="rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden">
+        ${post.imageUrl ? `<img src="${esc(post.imageUrl)}" alt="${esc(post.title)}" class="w-full aspect-[16/9] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
+        <div class="p-4">
+          <div class="flex items-center gap-2 mb-2">
+            ${post.feed?.iconUrl
+              ? `<img src="${esc(post.feed.iconUrl)}" class="h-5 w-5 rounded" onerror="this.style.display='none'" />`
+              : ''
+            }
+            <span class="text-xs text-zinc-500">${esc(post.feed?.title || post.author || '')}</span>
+            <span class="text-xs px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">RSS</span>
+            <time class="text-xs text-zinc-500 ml-auto">${new Date(post.pubDate).toLocaleDateString()}</time>
+          </div>
+          <h3 class="font-semibold">
+            <a href="${esc(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:underline">${esc(post.title)}</a>
+          </h3>
+          ${post.description ? `<p class="mt-1 text-sm text-zinc-400 line-clamp-3">${esc(post.description)}</p>` : ''}
+          ${post.tags?.length ? `<div class="mt-2 flex flex-wrap gap-1">${post.tags.map(t => `<span class="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">${esc(t)}</span>`).join('')}</div>` : ''}
+          <div class="mt-3 flex items-center text-sm text-zinc-400">
+            <a href="${esc(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-white ml-auto">↗ Read</a>
+          </div>
+        </div>
+      </article>
+    `).join('');
+  }
+
+  // --- Feed action listeners ---
+  function attachFeedListeners() {
+    document.querySelectorAll('.view-feed-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentFeedId = btn.dataset.feedId;
+        currentPage = 1;
+        switchView('detail');
+        loadFeedDetail(currentFeedId);
+      });
+    });
+
+    document.querySelectorAll('.refresh-feed-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.textContent = '...';
+        btn.disabled = true;
+        try {
+          const res = await fetch(`${hubUrl}/api/external-feeds/${btn.dataset.feedId}/refresh`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          btn.textContent = `+${data.newPosts}`;
+          setTimeout(() => { btn.textContent = '↻'; btn.disabled = false; loadFeeds(); }, 1500);
+        } catch {
+          btn.textContent = '!';
+          setTimeout(() => { btn.textContent = '↻'; btn.disabled = false; }, 1500);
+        }
+      });
+    });
+
+    document.querySelectorAll('.toggle-feed-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const active = btn.dataset.active === 'true';
+        await fetch(`${hubUrl}/api/external-feeds/${btn.dataset.feedId}`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: !active }),
+        });
+        loadFeeds();
+      });
+    });
+
+    document.querySelectorAll('.delete-feed-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Remove this feed and all its posts?')) return;
+        await fetch(`${hubUrl}/api/external-feeds/${btn.dataset.feedId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        loadFeeds();
+      });
+    });
+  }
+
+  // --- Load more ---
+  document.getElementById('load-more').addEventListener('click', () => {
+    currentPage++;
+    if (currentView === 'posts') loadAllPosts(true);
+    if (currentView === 'detail') loadFeedDetail(currentFeedId, true);
+  });
+
+  // --- Helpers ---
+  function esc(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function timeAgo(dateStr) {
+    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+</script>
+
+<style>
+  .active-view {
+    background-color: rgb(82 82 91);
+  }
+</style>

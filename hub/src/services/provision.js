@@ -11,7 +11,7 @@
 const TEMPLATE_OWNER = 'twilightscapes';
 const TEMPLATE_REPO = 'piratesocial';
 const TEMPLATE_PATH = 'node-template';
-const HUB_URL = process.env.HUB_URL || 'https://piratesocial-hub-production.up.railway.app';
+const HUB_URL = process.env.HUB_URL || 'https://piratesocial.app';
 
 // Files/dirs to skip when copying the template
 const SKIP_PATTERNS = [

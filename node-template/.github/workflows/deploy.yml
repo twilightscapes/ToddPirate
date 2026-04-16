@@ -52,10 +52,9 @@ jobs:
             cp user-repo/src/data/settings.json build/src/data/settings.json
           fi
           
-          # User images
+          # User images (overlay on top of template images, user files win)
           if [ -d user-repo/public/images ]; then
-            rm -rf build/public/images
-            cp -r user-repo/public/images build/public/images
+            cp -r user-repo/public/images/. build/public/images/
           fi
           
           # Decap CMS config (has user's repo name, URLs)

@@ -53,6 +53,15 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         });
         const bskyData = await bskyRes.json();
         myHandle = bskyData.handle;
+
+        // Get avatar from Bluesky profile
+        if (myHandle) {
+          const profileRes = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(myHandle)}`);
+          if (profileRes.ok) {
+            const profile = await profileRes.json();
+            myAvatar = profile.avatar || null;
+          }
+        }
       } catch {}
       loadSquads();
     })();
@@ -124,9 +133,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
       <!-- Circle avatar layout -->
       <div class="squad-circle relative flex justify-center items-center my-6" data-squad-id="${squad.id}" style="min-height:16rem">
-        <!-- Center: logged-in user avatar (placeholder) -->
-        <div class="absolute rounded-full border-2 border-blue-500 bg-zinc-800 flex items-center justify-center" style="width:4rem;height:4rem;z-index:2">
-          <span class="text-lg">👤</span>
+        <!-- Center: logged-in user avatar -->
+        <div class="absolute rounded-full border-2 border-blue-500 overflow-hidden bg-zinc-800 flex items-center justify-center" style="width:4rem;height:4rem;z-index:2">
+          ${myAvatar
+            ? `<img src="${esc(myAvatar)}" alt="You" class="w-full h-full object-cover" />`
+            : `<span class="text-lg">👤</span>`
+          }
         </div>
         <!-- Member avatars will be positioned around -->
         ${squad.members.map((m, i) => {

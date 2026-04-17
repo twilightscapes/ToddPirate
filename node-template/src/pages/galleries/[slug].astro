@@ -3,6 +3,9 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import Slideshow from '../../components/Slideshow.astro';
 import { getCollection } from 'astro:content';
 import labels from '../../data/labels.json';
+import settings from '../../data/settings.json';
+
+const showDates = settings.showDates !== false;
 export async function getStaticPaths() {
   const galleries = await getCollection('galleries');
   return galleries.map(g => ({ params: { slug: g.id.replace(/\.(md|mdx)$/, '') }, props: { gallery: g } }));
@@ -20,10 +23,15 @@ const { Content } = await gallery.render();
         <p class="mt-2 text-theme-muted">{gallery.data.description}</p>
       )}
       <p class="mt-1 text-sm text-theme-faint">
-        {gallery.data.photos.length} photos &middot;
-        <time datetime={gallery.data.pubDate.toISOString()}>
-          {gallery.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-        </time>
+        {gallery.data.photos.length} photos
+        {showDates && (
+          <Fragment>
+            &middot;
+            <time datetime={gallery.data.pubDate.toISOString()}>
+              {gallery.data.pubDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </time>
+          </Fragment>
+        )}
       </p>
     </header>
 

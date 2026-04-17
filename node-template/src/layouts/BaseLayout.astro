@@ -163,6 +163,8 @@ const allNavItems = [...visibleNavItems, ...autoNavPages];
           tracks={block.tracks}
           layout={block.layout}
           labels={labels.player || {}}
+          startTime={block.startTime}
+          endTime={block.endTime}
         />
       </div>
     ))}

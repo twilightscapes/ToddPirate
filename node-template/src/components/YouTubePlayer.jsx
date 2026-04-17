@@ -8,15 +8,25 @@ function getYouTubeId(url) {
   return m ? m[1] : null;
 }
 
-// Build full playlist from primary URL + tracks
-function buildPlaylist(url, heading, tracks, trackLabel) {
+// Build full playlist from primary URL + tracks (with optional clip start/end times)
+function buildPlaylist(url, heading, tracks, trackLabel, mainStartTime, mainEndTime) {
   const items = [];
   const mainId = getYouTubeId(url);
-  if (mainId) items.push({ id: mainId, title: heading || `${trackLabel} 1` });
+  if (mainId) items.push({
+    id: mainId,
+    title: heading || `${trackLabel} 1`,
+    startTime: mainStartTime || undefined,
+    endTime: mainEndTime || undefined,
+  });
   if (tracks && tracks.length) {
     tracks.forEach((t, i) => {
       const tid = getYouTubeId(t.url);
-      if (tid) items.push({ id: tid, title: t.title || `${trackLabel} ${items.length + 1}` });
+      if (tid) items.push({
+        id: tid,
+        title: t.title || `${trackLabel} ${items.length + 1}`,
+        startTime: t.startTime || undefined,
+        endTime: t.endTime || undefined,
+      });
     });
   }
   return items;
@@ -38,9 +48,9 @@ const defaults = {
   youtubeVideo: 'YouTube video',
 };
 
-export default function YouTubePlayer({ url, heading, caption, audioOnly, display = 'docked', tracks, layout = 'contained', labels: userLabels = {} }) {
+export default function YouTubePlayer({ url, heading, caption, audioOnly, display = 'docked', tracks, layout = 'contained', labels: userLabels = {}, startTime, endTime }) {
   const L = { ...defaults, ...userLabels };
-  const playlist = buildPlaylist(url, heading, tracks, L.track);
+  const playlist = buildPlaylist(url, heading, tracks, L.track, startTime, endTime);
   const isFloating = display === 'floating';
   const hasPlaylist = playlist.length > 1;
 
@@ -93,7 +103,11 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
 
     function initPlayer() {
       if (playerRef.current) {
-        playerRef.current.loadVideoById(current.id);
+        playerRef.current.loadVideoById({
+          videoId: current.id,
+          startSeconds: current.startTime || 0,
+          endSeconds: current.endTime || undefined,
+        });
         return;
       }
 
@@ -109,22 +123,41 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
           iv_load_policy: 3,
           disablekb: 1,
           fs: 0,
+          start: current.startTime || 0,
+          end: current.endTime || undefined,
         },
         events: {
           onReady: (e) => {
             e.target.setVolume(volume);
             e.target.playVideo();
             setIsPlaying(true);
-            setDuration(e.target.getDuration());
+            const fullDur = e.target.getDuration();
+            const clipStart = current.startTime || 0;
+            const clipEnd = current.endTime || fullDur;
+            setDuration(clipEnd - clipStart);
           },
           onStateChange: (e) => {
             if (e.data === window.YT.PlayerState.PLAYING) {
               setIsPlaying(true);
-              setDuration(e.target.getDuration());
+              const fullDur = e.target.getDuration();
+              const clipStart = current.startTime || 0;
+              const clipEnd = current.endTime || fullDur;
+              setDuration(clipEnd - clipStart);
               clearInterval(progressInterval.current);
               progressInterval.current = setInterval(() => {
                 if (playerRef.current && playerRef.current.getCurrentTime) {
-                  setProgress(playerRef.current.getCurrentTime());
+                  const t = playerRef.current.getCurrentTime();
+                  const cs = current.startTime || 0;
+                  setProgress(Math.max(0, t - cs));
+                  // Enforce endTime as a safety net
+                  if (current.endTime && t >= current.endTime) {
+                    clearInterval(progressInterval.current);
+                    if (currentIndex < playlist.length - 1) {
+                      setCurrentIndex(currentIndex + 1);
+                    } else {
+                      setCurrentIndex(0);
+                    }
+                  }
                 }
               }, 500);
             } else if (e.data === window.YT.PlayerState.PAUSED) {
@@ -176,7 +209,11 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   const skipTo = useCallback((idx) => {
     setCurrentIndex(idx);
     if (playerRef.current && playerRef.current.loadVideoById) {
-      playerRef.current.loadVideoById(playlist[idx].id);
+      playerRef.current.loadVideoById({
+        videoId: playlist[idx].id,
+        startSeconds: playlist[idx].startTime || 0,
+        endSeconds: playlist[idx].endTime || undefined,
+      });
     }
   }, [playlist]);
 
@@ -194,10 +231,11 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     if (!playerRef.current || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const pct = (e.clientX - rect.left) / rect.width;
-    const time = pct * duration;
+    const clipStart = current.startTime || 0;
+    const time = clipStart + pct * duration;
     playerRef.current.seekTo(time, true);
-    setProgress(time);
-  }, [duration]);
+    setProgress(pct * duration);
+  }, [duration, current]);
 
   const formatTime = (s) => {
     if (!s || isNaN(s)) return '0:00';

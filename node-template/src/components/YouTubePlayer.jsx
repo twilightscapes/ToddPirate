@@ -1,35 +1,11 @@
 /** @jsxImportSource preact */
-import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks';
 
 // Extract YouTube video ID from various URL formats
 function getYouTubeId(url) {
   if (!url) return null;
   const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/);
   return m ? m[1] : null;
-}
-
-// Build full playlist from primary URL + tracks (with optional clip start/end times)
-function buildPlaylist(url, heading, tracks, trackLabel, mainStartTime, mainEndTime) {
-  const items = [];
-  const mainId = getYouTubeId(url);
-  if (mainId) items.push({
-    id: mainId,
-    title: heading || `${trackLabel} 1`,
-    startTime: mainStartTime || undefined,
-    endTime: mainEndTime || undefined,
-  });
-  if (tracks && tracks.length) {
-    tracks.forEach((t, i) => {
-      const tid = getYouTubeId(t.url);
-      if (tid) items.push({
-        id: tid,
-        title: t.title || `${trackLabel} ${items.length + 1}`,
-        startTime: t.startTime || undefined,
-        endTime: t.endTime || undefined,
-      });
-    });
-  }
-  return items;
 }
 
 // Default labels
@@ -50,14 +26,34 @@ const defaults = {
 
 export default function YouTubePlayer({ url, heading, caption, audioOnly, display = 'docked', tracks, layout = 'contained', labels: userLabels = {}, startTime, endTime }) {
   const L = { ...defaults, ...userLabels };
-  const playlist = buildPlaylist(url, heading, tracks, L.track, startTime, endTime);
   const isFloating = display === 'floating';
-  const hasPlaylist = playlist.length > 1;
 
-  // If no valid videos, render nothing
+  // Build playlist once — useMemo prevents new array reference on every render
+  const playlist = useMemo(() => {
+    const items = [];
+    const mainId = getYouTubeId(url);
+    if (mainId) items.push({
+      id: mainId,
+      title: heading || `${L.track} 1`,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined,
+    });
+    if (tracks && tracks.length) {
+      tracks.forEach((t) => {
+        const tid = getYouTubeId(t.url);
+        if (tid) items.push({
+          id: tid,
+          title: t.title || `${L.track} ${items.length + 1}`,
+          startTime: t.startTime || undefined,
+          endTime: t.endTime || undefined,
+        });
+      });
+    }
+    return items;
+  }, [url, heading, tracks, startTime, endTime]);
+
   if (playlist.length === 0) return null;
 
-  // All modes now use InteractivePlayer for consistent controls + video display
   return <InteractivePlayer
     playlist={playlist}
     audioOnly={audioOnly}
@@ -77,29 +73,28 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   const [showPlaylist, setShowPlaylist] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [closed, setClosed] = useState(false);
-  const [position, setPosition] = useState({ side: 'bottom' }); // bottom, left, right
+  const [position, setPosition] = useState({ side: 'bottom' });
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [dragOffset, setDragOffset] = useState(null); // {x, y} when dragging
-  const [dragPos, setDragPos] = useState(null); // {x, y} custom position from drag
+  const [dragOffset, setDragOffset] = useState(null);
+  const [dragPos, setDragPos] = useState(null);
+
+  // ONE iframe ref — NEVER conditionally rendered, just styled via CSS
+  const iframeRef = useRef(null);
   const playerRef = useRef(null);
   const containerRef = useRef(null);
-  const iframeRef = useRef(null);
   const progressInterval = useRef(null);
   const isDragging = useRef(false);
   const playerReadyRef = useRef(false);
   const handleNextRef = useRef(null);
   const lastAdvanceTimeRef = useRef(0);
+  const currentRef = useRef(null);
+
   const hasPlaylist = playlist.length > 1;
   const current = playlist[currentIndex] || playlist[0];
-  const currentRef = useRef(current);
-  const currentIndexRef = useRef(currentIndex);
-
-  // Keep refs in sync
   currentRef.current = current;
-  currentIndexRef.current = currentIndex;
 
-  // Load YouTube IFrame API
+  // ── YouTube IFrame API loader ──
   useEffect(() => {
     if (window.YT && window.YT.Player) return;
     const tag = document.createElement('script');
@@ -107,6 +102,7 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     document.head.appendChild(tag);
   }, []);
 
+  // ── Player event handlers (stable via useCallback, use refs for current state) ──
   const onPlayerReady = useCallback((e) => {
     playerReadyRef.current = true;
     e.target.setVolume(volume);
@@ -126,7 +122,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
           const cur = currentRef.current;
           const cs = cur.startTime || 0;
           setProgress(Math.max(0, t - cs));
-          // Safety net: enforce endTime
           if (cur.endTime && t >= cur.endTime) {
             clearInterval(progressInterval.current);
             handleNextRef.current?.();
@@ -138,7 +133,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
       clearInterval(progressInterval.current);
     } else if (e.data === window.YT.PlayerState.ENDED) {
       clearInterval(progressInterval.current);
-      // Debounce to prevent double-advance (matches slider)
       const now = Date.now();
       if (now - lastAdvanceTimeRef.current > 500) {
         lastAdvanceTimeRef.current = now;
@@ -147,12 +141,12 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     }
   }, []);
 
-  // Initialize player ONCE immediately (matches slider — establishes session early)
+  // ── Initialize player ONCE on mount — empty deps ──
   useEffect(() => {
     if (playerRef.current) return;
 
     const first = playlist[0];
-    if (!first) return;
+    if (!first || !iframeRef.current) return;
 
     function initPlayer() {
       if (playerRef.current) return;
@@ -164,7 +158,7 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         videoId: first.id,
         playerVars: {
           autoplay: 0,
-          controls: 1,
+          controls: 0,
           modestbranding: 1,
           rel: 0,
           playsinline: 1,
@@ -189,46 +183,49 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
       }, 100);
       return () => clearInterval(checkInterval);
     }
-  }, [playlist]);
+  }, []); // truly once
 
-  // Load video when track changes (matches slider pattern exactly)
+  // ── Load new video ONLY when currentIndex changes (skip first render) ──
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     if (!playerRef.current || !playerReadyRef.current) return;
 
     const track = playlist[currentIndex];
     if (!track) return;
 
-    try {
-      playerRef.current.loadVideoById({
-        videoId: track.id,
-        startSeconds: track.startTime || 0,
-        endSeconds: track.endTime,
-      });
-    } catch (error) {
-      console.error('Error loading video:', error);
-    }
-  }, [currentIndex, playlist]);
+    playerRef.current.loadVideoById({
+      videoId: track.id,
+      startSeconds: track.startTime || 0,
+      endSeconds: track.endTime,
+    });
+  }, [currentIndex]); // ONLY currentIndex
 
-  // Volume changes
+  // ── Volume ──
   useEffect(() => {
     if (playerRef.current && playerRef.current.setVolume) {
       playerRef.current.setVolume(volume);
     }
   }, [volume]);
 
+  // ── Controls ──
   const togglePlay = useCallback(() => {
     if (!playerRef.current) return;
-    if (!started || !isPlaying) {
-      setStarted(true);
-      playerRef.current.playVideo();
-    } else {
-      playerRef.current.pauseVideo();
-    }
-  }, [started, isPlaying]);
+    try {
+      const state = playerRef.current.getPlayerState();
+      if (state === 1) { // YT.PlayerState.PLAYING
+        playerRef.current.pauseVideo();
+      } else {
+        setStarted(true);
+        playerRef.current.playVideo();
+      }
+    } catch (e) { /* player not ready */ }
+  }, []); // no deps — reads player state directly
 
-  const skipTo = useCallback((idx) => {
-    setCurrentIndex(idx);
-  }, []);
+  const skipTo = useCallback((idx) => setCurrentIndex(idx), []);
 
   const prevTrack = useCallback(() => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : playlist.length - 1));
@@ -238,10 +235,7 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     setCurrentIndex((prev) => (prev < playlist.length - 1 ? prev + 1 : 0));
   }, [playlist.length]);
 
-  // Keep handleNextRef always pointing to latest nextTrack (matches slider's handleNextRef pattern)
-  useEffect(() => {
-    handleNextRef.current = nextTrack;
-  }, [nextTrack]);
+  useEffect(() => { handleNextRef.current = nextTrack; }, [nextTrack]);
 
   const seekTo = useCallback((e) => {
     if (!playerRef.current || !duration) return;
@@ -261,16 +255,15 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   };
 
   const cycleSide = useCallback(() => {
-    setDragPos(null); // reset custom drag position
+    setDragPos(null);
     const sides = ['bottom', 'right', 'left'];
     const idx = sides.indexOf(position.side);
     setPosition({ side: sides[(idx + 1) % sides.length] });
   }, [position.side]);
 
-  // ── Drag handlers for floating player ──
+  // ── Drag handlers ──
   const onDragStart = useCallback((e) => {
     if (!isFloating || !containerRef.current) return;
-    // Ignore if target is a button/input/range
     if (e.target.closest('button, input, [role="button"]')) return;
     e.preventDefault();
     const touch = e.touches ? e.touches[0] : e;
@@ -295,50 +288,51 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
 
   useEffect(() => {
     if (!isFloating) return;
-    const moveHandler = (e) => onDragMove(e);
-    const endHandler = () => onDragEnd();
-    window.addEventListener('mousemove', moveHandler);
-    window.addEventListener('mouseup', endHandler);
-    window.addEventListener('touchmove', moveHandler, { passive: false });
-    window.addEventListener('touchend', endHandler);
+    window.addEventListener('mousemove', onDragMove);
+    window.addEventListener('mouseup', onDragEnd);
+    window.addEventListener('touchmove', onDragMove, { passive: false });
+    window.addEventListener('touchend', onDragEnd);
     return () => {
-      window.removeEventListener('mousemove', moveHandler);
-      window.removeEventListener('mouseup', endHandler);
-      window.removeEventListener('touchmove', moveHandler);
-      window.removeEventListener('touchend', endHandler);
+      window.removeEventListener('mousemove', onDragMove);
+      window.removeEventListener('mouseup', onDragEnd);
+      window.removeEventListener('touchmove', onDragMove);
+      window.removeEventListener('touchend', onDragEnd);
     };
   }, [isFloating, onDragMove, onDragEnd]);
 
-  // ── Docked player (inline on page) ──
+  // ── Iframe wrapper style — ONE div always in DOM, visibility via CSS only ──
+  const getIframeStyle = () => {
+    if (isFloating && minimized) {
+      return 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+    }
+    if (audioOnly) {
+      return 'position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none';
+    }
+    return 'aspect-ratio:16/9;background:#000;width:100%';
+  };
+
+  // ═══════════════════════════════════════════
+  // ── DOCKED PLAYER ──
+  // ═══════════════════════════════════════════
   if (!isFloating) {
     const wrapperClass = layout === 'full' ? '' : 'max-w-4xl mx-auto';
     return (
       <section class={`mb-12 ${wrapperClass}`}>
         {heading && <h2 class="mb-4 text-xl font-semibold">{heading}</h2>}
 
-        {/* YouTube iframe — hidden when audio-only, visible when video */}
-        {audioOnly ? (
-          <div style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
-            <div ref={iframeRef} />
-          </div>
-        ) : (
-          <div class="rounded-lg overflow-hidden mb-3" style="aspect-ratio:16/9;background:#000">
-            <div ref={iframeRef} style="width:100%;height:100%" />
-          </div>
-        )}
+        {/* SINGLE iframe div — always in DOM */}
+        <div style={getIframeStyle()} class={audioOnly ? '' : 'rounded-lg overflow-hidden mb-3'}>
+          <div ref={iframeRef} style="width:100%;height:100%" />
+        </div>
 
         <div class="rounded-lg border overflow-hidden" style="border-color:var(--ps-card-border);background:var(--ps-card-bg)">
-          {/* Main controls */}
           <div class="flex items-center gap-3 p-4">
-            {/* Play/Pause */}
             <button onClick={togglePlay} class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--ps-primary);color:#fff" aria-label={isPlaying ? L.pause : L.play}>
               {isPlaying
                 ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
                 : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
               }
             </button>
-
-            {/* Track info + progress */}
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium truncate" style="color:var(--ps-text)">{current.title}</div>
               {started && (
@@ -351,8 +345,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
                 </div>
               )}
             </div>
-
-            {/* Skip buttons */}
             {hasPlaylist && (
               <div class="flex items-center gap-1">
                 <button onClick={prevTrack} class="p-1.5 rounded" style="color:var(--ps-text-muted)" aria-label={L.previous}>
@@ -363,8 +355,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
                 </button>
               </div>
             )}
-
-            {/* Volume */}
             <div class="flex items-center gap-1.5 w-24">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--ps-text-faint);flex-shrink:0"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
               <input type="range" min="0" max="100" value={volume} onInput={(e) => setVolume(Number(e.target.value))}
@@ -372,16 +362,12 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
                 style="accent-color:var(--ps-primary);background:var(--ps-border)"
               />
             </div>
-
-            {/* Playlist toggle */}
             {hasPlaylist && (
               <button onClick={() => setShowPlaylist(!showPlaylist)} class="p-1.5 rounded" style={`color:${showPlaylist ? 'var(--ps-primary)' : 'var(--ps-text-muted)'}`} aria-label={L.playlist}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               </button>
             )}
           </div>
-
-          {/* Playlist */}
           {hasPlaylist && showPlaylist && (
             <div class="border-t px-2 py-1 max-h-48 overflow-y-auto" style="border-color:var(--ps-border)">
               {playlist.map((track, i) => (
@@ -398,15 +384,15 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
             </div>
           )}
         </div>
-
         {caption && <p class="mt-2 text-sm text-center" style="color:var(--ps-text-muted)">{caption}</p>}
       </section>
     );
   }
 
-  // ── Floating mini player ──
-  // Video mode: closed = fully hidden; audio mode: minimized = nub
-  if (isFloating && !audioOnly && closed) return null;
+  // ═══════════════════════════════════════════
+  // ── FLOATING MINI PLAYER ──
+  // ═══════════════════════════════════════════
+  if (closed) return null;
 
   const floatingWidth = !audioOnly && !minimized ? '420px' : (minimized ? '48px' : '380px');
   const posStyles = {
@@ -427,14 +413,11 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         width: minimized ? '48px' : '100%',
       }}
     >
-      {/* YouTube iframe — hidden when audio-only, visible as mini video when not */}
-      {audioOnly ? (
-        <div style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none">
-          <div ref={iframeRef} />
-        </div>
-      ) : null}
+      {/* SINGLE iframe div — always in DOM, visibility via CSS */}
+      <div style={getIframeStyle()}>
+        <div ref={iframeRef} style="width:100%;height:100%" />
+      </div>
 
-      {/* Minimized nub */}
       {minimized ? (
         <button onClick={() => setMinimized(false)}
           class="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
@@ -448,7 +431,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         </button>
       ) : (
         <div class="rounded-xl shadow-2xl border overflow-hidden" style="background:var(--ps-card-bg);border-color:var(--ps-card-border);backdrop-filter:blur(20px)">
-          {/* Top bar — drag handle + minimize */}
           <div class="flex items-center justify-between px-3 py-1.5 border-b"
             style="border-color:var(--ps-border);cursor:grab;user-select:none;-webkit-user-select:none"
             onMouseDown={onDragStart}
@@ -461,62 +443,42 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="opacity:0.5"><circle cx="9" cy="5" r="2"/><circle cx="15" cy="5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="19" r="2"/><circle cx="15" cy="19" r="2"/></svg>
               {audioOnly ? L.audioPlayer : L.videoPlayer}
             </span>
-            <button onClick={() => audioOnly ? setMinimized(true) : (playerRef.current?.pauseVideo?.(), setClosed(true))} class="text-xs px-1.5 py-0.5 rounded" style="color:var(--ps-text-faint)" aria-label={audioOnly ? L.minimize : 'Close'}>
-              {audioOnly ? '─' : '✕'}
+            <button onClick={() => { playerRef.current?.pauseVideo?.(); setClosed(true); }} class="text-xs px-1.5 py-0.5 rounded" style="color:var(--ps-text-faint)" aria-label="Close">
+              ✕
             </button>
           </div>
 
-          {/* Mini video display when not audio-only */}
-          {!audioOnly && (
-            <div style="aspect-ratio:16/9;background:#000">
-              <div ref={iframeRef} style="width:100%;height:100%" />
-            </div>
-          )}
-
-          {/* Progress bar */}
           {started && (
             <div class="h-1 cursor-pointer" style="background:var(--ps-border)" onClick={seekTo}>
               <div class="h-full transition-all" style={`width:${duration ? (progress / duration * 100) : 0}%;background:var(--ps-primary)`} />
             </div>
           )}
 
-          {/* Controls */}
           <div class="flex items-center gap-2 px-3 py-2">
-            {/* Prev */}
             {hasPlaylist && (
               <button onClick={prevTrack} class="p-1 rounded" style="color:var(--ps-text-muted)" aria-label={L.previous}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="19,20 9,12 19,4"/><rect x="5" y="4" width="3" height="16"/></svg>
               </button>
             )}
-
-            {/* Play/Pause */}
             <button onClick={togglePlay} class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style="background:var(--ps-primary);color:#fff" aria-label={isPlaying ? L.pause : L.play}>
               {isPlaying
                 ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
                 : <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
               }
             </button>
-
-            {/* Next */}
             {hasPlaylist && (
               <button onClick={nextTrack} class="p-1 rounded" style="color:var(--ps-text-muted)" aria-label={L.next}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><rect x="16" y="4" width="3" height="16"/></svg>
               </button>
             )}
-
-            {/* Track title */}
             <div class="flex-1 min-w-0 mx-1">
               <div class="text-xs font-medium truncate" style="color:var(--ps-text)">{current.title}</div>
               {started && <div class="text-xs" style="color:var(--ps-text-faint)">{formatTime(progress)} / {formatTime(duration)}</div>}
             </div>
-
-            {/* Volume */}
             <input type="range" min="0" max="100" value={volume} onInput={(e) => setVolume(Number(e.target.value))}
               class="w-14 h-1 rounded-full appearance-none cursor-pointer"
               style="accent-color:var(--ps-primary);background:var(--ps-border)"
             />
-
-            {/* Playlist toggle */}
             {hasPlaylist && (
               <button onClick={() => setShowPlaylist(!showPlaylist)} class="p-1 rounded" style={`color:${showPlaylist ? 'var(--ps-primary)' : 'var(--ps-text-muted)'}`} aria-label={L.playlist}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
@@ -524,7 +486,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
             )}
           </div>
 
-          {/* Playlist popout */}
           {hasPlaylist && showPlaylist && (
             <div class="border-t px-1 py-1 max-h-40 overflow-y-auto" style="border-color:var(--ps-border)">
               {playlist.map((track, i) => (

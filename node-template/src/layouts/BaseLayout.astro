@@ -103,10 +103,10 @@ const bgCss = bgUrl ? `body::before{content:'';position:fixed;inset:0;z-index:-1
           }
         </a>
         <div class="flex items-center gap-3 text-xs md:gap-6 md:text-sm">
-          {(settings.navItems || []).filter((item: any) => item.visible !== false).map((item: any) => (
+          {(labels.navItems || []).filter((item: any) => item.visible !== false).map((item: any) => (
             <a href={item.url.startsWith('/') ? `${base}${item.url}` : item.url} class="text-theme-muted hover:text-theme-text transition">{item.label}</a>
           ))}
-          {settings.showSignIn !== false && (
+          {labels.showSignIn !== false && (
             <button id="auth-btn" class="rounded bg-theme-surface-hover px-3 py-1.5 text-xs hover:bg-theme-card-hover transition">
               {labels.nav.signIn}
             </button>

@@ -1,4 +1,12 @@
 {
+  "navItems": [
+    { "label": "Posts", "url": "/posts", "visible": true },
+    { "label": "Galleries", "url": "/galleries", "visible": true },
+    { "label": "Social", "url": "/social", "visible": true },
+    { "label": "Settings", "url": "/settings", "visible": true },
+    { "label": "About", "url": "/about", "visible": true }
+  ],
+  "showSignIn": true,
   "nav": {
     "posts": "Posts",
     "galleries": "Galleries",

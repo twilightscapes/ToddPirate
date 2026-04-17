@@ -46,7 +46,7 @@ app.use(cors({
     // Allow any *.github.io site (user nodes)
     if (origin.endsWith('.github.io')) return callback(null, true);
     // Allow the hub's own pages (setup wizard, landing page)
-    if (origin.endsWith('.up.railway.app')) return callback(null, true);
+    if (origin.endsWith('.fly.dev')) return callback(null, true);
     if (origin.endsWith('piratesocial.app')) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(null, false);

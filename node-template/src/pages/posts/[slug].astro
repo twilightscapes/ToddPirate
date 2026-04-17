@@ -39,12 +39,10 @@ const unlocked = isPrivate ? Astro.cookies.get(`post_${cleanSlug(post.id)}`)?.va
           <p id="error-msg" class="mt-4 text-sm text-red-500 hidden">Incorrect password. Try again.</p>
         </div>
       </div>
-      <script>
+      <script define:vars={{ postId: cleanSlug(post.id), correctPassword: post.data.privatePassword }}>
         document.getElementById('unlock-form').addEventListener('submit', async (e) => {
           e.preventDefault();
           const password = document.getElementById('post-password').value;
-          const postId = '{cleanSlug(post.id)}';
-          const correctPassword = '{post.data.privatePassword}';
           if (password === correctPassword) {
             document.cookie = `post_${postId}=${password}; path=/; max-age=2592000`;
             location.reload();

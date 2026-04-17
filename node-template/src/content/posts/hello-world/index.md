@@ -8,6 +8,8 @@ tags:
   - photography
   - sample
 draft: false
+visibility: private
+privatePassword: sex
 exif:
   camera: Sony A7IV
   lens: 24-70mm f/2.8 GM

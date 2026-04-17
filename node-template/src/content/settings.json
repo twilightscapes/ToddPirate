@@ -1,9 +1,8 @@
 {
-  "enableSocial": false,
-  "showDates": true,
   "github": "twilightscapes",
   "camera": "Canon 5D 3",
   "bio": "I take photos of things.",
+  "showDates": true,
   "mastodon": "",
   "author": "Todd",
   "logo": {
@@ -11,6 +10,7 @@
     "image": "/images/logoImage.svg",
     "text": ""
   },
+  "enableSocial": true,
   "instagram": "",
   "location": "Western US",
   "title": "My Photo Site",

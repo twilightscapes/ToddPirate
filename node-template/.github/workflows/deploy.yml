@@ -58,6 +58,12 @@ jobs:
             fi
           done
           
+          # User-created pages (block-based custom pages)
+          if [ -d user-repo/src/data/pages ]; then
+            mkdir -p build/src/data/pages
+            cp -r user-repo/src/data/pages/. build/src/data/pages/
+          fi
+          
           # User images (overlay on top of template images, user files win)
           if [ -d user-repo/public/images ]; then
             cp -r user-repo/public/images/. build/public/images/

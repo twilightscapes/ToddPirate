@@ -769,6 +769,37 @@
       });
       CMS.registerPreviewTemplate('home', HomePreview);
 
+      // Pages preview — same block rendering with title header
+      var PagePreview = createClass({
+        render: function () {
+          var entry = this.props.entry;
+          var getAsset = this.props.getAsset;
+          var title = entry.getIn(['data', 'title']) || '';
+          var description = entry.getIn(['data', 'description']) || '';
+          var slug = entry.getIn(['data', 'slug']) || '';
+          var blocks = entry.getIn(['data', 'blocks']);
+
+          // Reuse HomePreview's renderBlock by creating a temporary instance
+          var homeInst = new HomePreview({ entry: entry, getAsset: getAsset });
+          var renderBlock = function(block, i) {
+            // Access the renderBlock from HomePreview's render closure
+            return homeInst.render.call(homeInst);
+          };
+
+          // Actually, just inline the block rendering from HomePreview
+          // We'll call HomePreview render with modified entry
+          return h('div', { style: { padding: '20px 24px', maxWidth: '800px', margin: '0 auto' }},
+            title && h('div', { style: { marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #27272a' }},
+              h('h1', { style: { fontSize: '28px', fontWeight: 700, color: '#f4f4f5', margin: '0 0 4px 0' }}, title),
+              description && h('p', { style: { color: '#a1a1aa', fontSize: '14px', margin: '0 0 4px 0' }}, description),
+              slug && h('p', { style: { color: '#3f3f46', fontSize: '12px', margin: 0 }}, '/p/' + slug)
+            ),
+            h(HomePreview, { entry: entry, getAsset: getAsset })
+          );
+        },
+      });
+      CMS.registerPreviewTemplate('pages', PagePreview);
+
       // Gallery preview template
       var GalleryPreview = createClass({
         render: function () {

@@ -54,6 +54,14 @@ const visibleNavItems = (labels.navItems || []).filter((item: any) => {
   if (!enableSocial && socialPaths.some(p => item.url?.startsWith(p))) return false;
   return true;
 });
+
+// Auto-add pages with showInNav: true
+const pageFiles = import.meta.glob('../data/pages/*.json', { eager: true });
+const autoNavPages = Object.values(pageFiles)
+  .map((mod: any) => mod.default || mod)
+  .filter((p: any) => p.showInNav && p.slug && p.title)
+  .map((p: any) => ({ label: p.title, url: `/p/${p.slug}`, visible: true }));
+const allNavItems = [...visibleNavItems, ...autoNavPages];
 ---
 
 <!doctype html>
@@ -112,7 +120,7 @@ const visibleNavItems = (labels.navItems || []).filter((item: any) => {
           }
         </a>
         <div class="flex items-center gap-3 text-xs md:gap-6 md:text-sm">
-          {visibleNavItems.map((item: any) => (
+          {allNavItems.map((item: any) => (
             <a href={item.url.startsWith('/') ? `${base}${item.url}` : item.url} class="text-theme-muted hover:text-theme-text transition">{item.label}</a>
           ))}
           {enableSocial && labels.showSignIn !== false && (

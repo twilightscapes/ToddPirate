@@ -92,6 +92,11 @@ collections:
         name: config
         file: src/data/settings.json
         fields:
+          - label: "Enable Social Features"
+            name: enableSocial
+            widget: boolean
+            default: true
+            hint: "When OFF, hides the Social page, Settings pages, Sign In button, and social actions on posts. The site becomes a standalone photo blog."
           - { label: Site Title, name: title, widget: string }
           - { label: Description, name: description, widget: text }
           - { label: Author Name, name: author, widget: string }

@@ -5,6 +5,9 @@ import PhotoGallery from '../../components/PhotoGallery.astro';
 import SocialActions from '../../components/SocialActions.astro';
 import { getCollection } from 'astro:content';
 import { withBase, cleanSlug } from '../../lib/config';
+import settings from '../../data/settings.json';
+
+const enableSocial = settings.enableSocial !== false;
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts');
@@ -59,6 +62,6 @@ const { Content } = await post.render();
     )}
 
     <!-- Social interactions (client-side) -->
-    <SocialActions postSlug={cleanSlug(post.id)} />
+    {enableSocial && <SocialActions postSlug={cleanSlug(post.id)} />}
   </article>
 </BaseLayout>

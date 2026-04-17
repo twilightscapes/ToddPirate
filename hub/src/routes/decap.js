@@ -12,7 +12,7 @@ const router = Router();
 // Step 1: Redirect to GitHub OAuth with repo scope for Decap CMS
 router.get('/auth', (_req, res) => {
   const params = new URLSearchParams({
-    client_id: process.env.GITHUB_CLIENT_ID,
+    client_id: process.env.DECAP_GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_ID,
     redirect_uri: `${process.env.HUB_URL}/api/decap/callback`,
     scope: 'repo,user',
   });
@@ -29,8 +29,8 @@ router.get('/callback', async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
-        client_id: process.env.GITHUB_CLIENT_ID,
-        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        client_id: process.env.DECAP_GITHUB_CLIENT_ID || process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.DECAP_GITHUB_CLIENT_SECRET || process.env.GITHUB_CLIENT_SECRET,
         code,
       }),
     });

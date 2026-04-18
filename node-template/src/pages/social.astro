@@ -1225,7 +1225,6 @@ const sl = labels.social;
             const seenDids = new Set();
             const uniqueMembers = [];
             for (const squad of allSquads) {
-              if (!squad.feedEnabled) continue;
               for (const m of (squad.members || [])) {
                 const key = m.did || m.handle;
                 if (!seenDids.has(key)) { seenDids.add(key); uniqueMembers.push(m); }

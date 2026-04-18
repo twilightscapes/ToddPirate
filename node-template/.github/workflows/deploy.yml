@@ -40,10 +40,24 @@ jobs:
           cp -r template-source/node-template build
           
           # Overlay user content — everything lives in src/content/
-          # This includes: posts, galleries, settings, theme, labels, pwa, home, pages
+          # This includes: posts, galleries, settings, theme, pwa, home, pages
+          # labels.json is merged (not overwritten) so new template keys are preserved
           if [ -d user-repo/src/content ]; then
+            # Save template labels before user content overlay
+            cp build/src/content/labels.json /tmp/template-labels.json 2>/dev/null || true
             rm -rf build/src/content
             cp -r user-repo/src/content build/src/content
+            # Merge labels: template base + user overrides (preserves new template keys)
+            if [ -f /tmp/template-labels.json ]; then
+              node -e "
+                const fs = require('fs');
+                const t = JSON.parse(fs.readFileSync('/tmp/template-labels.json','utf8'));
+                const uPath = 'build/src/content/labels.json';
+                const u = fs.existsSync(uPath) ? JSON.parse(fs.readFileSync(uPath,'utf8')) : {};
+                const merge = (a,b) => { const r={...a}; for(const k in b){ r[k] = typeof a[k]==='object'&&!Array.isArray(a[k])&&typeof b[k]==='object'&&!Array.isArray(b[k]) ? merge(a[k],b[k]) : b[k]; } return r; };
+                fs.writeFileSync(uPath, JSON.stringify(merge(t,u),null,2));
+              "
+            fi
           fi
           
           # Legacy support: migrate old src/data/ files if they exist

@@ -2232,15 +2232,11 @@ const sl = labels.social;
     container.classList.remove('yt-placeholder');
     ytActiveContainer = container;
 
-    // Swap video ID without reloading iframe — preserves session, no new ads
-    if (!iframe._firstLoaded) {
-      // First video ever — must set src to initialize the player
-      iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=1`;
-      iframe._firstLoaded = true;
-    } else {
-      // Subsequent videos — use postMessage to avoid iframe reload and ads
-      try { iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'loadVideoById', args: [videoId] }), '*'); } catch {}
-    }
+    // Swap video — set src each time. Use youtube-nocookie for privacy.
+    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=1`;
+    iframe._firstLoaded = true;
+    // Re-subscribe to state events after iframe reloads
+    iframe.addEventListener('load', () => setTimeout(ytSubscribeToEvents, 500), { once: true });
 
     iframe._userActivated = true;
 

@@ -740,7 +740,12 @@ const sl = labels.social;
     if (embed.external?.uri) {
       const ytId = getYouTubeId(embed.external.uri);
       if (ytId) {
-        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId}?enablejsapi=1" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video yt-placeholder" data-yt-id="${ytId}" style="cursor:pointer;position:relative">
+          <img src="https://i.ytimg.com/vi/${ytId}/hqdefault.jpg" class="w-full h-full object-cover" alt="" loading="lazy" onerror="this.style.display='none'" />
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+            <svg width="68" height="48" viewBox="0 0 68 48"><path d="M66.5 7.7s-.7-4.7-2.8-6.8C60.7-2 57.2-2 55.6-2.2 46.5-3 34-3 34-3s-12.5 0-21.6.8C10.8-2 7.3-2 4.3.9 2.2 3 1.5 7.7 1.5 7.7S.8 13.2.8 18.7v5.1c0 5.5.7 11 .7 11s.7 4.7 2.8 6.8c3 2.9 6.9 2.8 8.6 3.1 6.3.6 26.1.8 26.1.8s12.5 0 21.6-.8c1.6-.2 5.1-.2 8.1-3.1 2.1-2.1 2.8-6.8 2.8-6.8s.7-5.5.7-11v-5.1c0-5.5-.7-11-.7-11z" fill="red"/><path d="M27 33V13l18 10z" fill="#fff"/></svg>
+          </div>
+        </div>`;
       } else {
         html += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-theme-input-border overflow-hidden hover:border-theme-card-hover transition">
           ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
@@ -1801,6 +1806,7 @@ const sl = labels.social;
       }
     });
     observeVideos();
+    initYTPlaceholders();
   }
 
   // ============================================================
@@ -1910,11 +1916,8 @@ const sl = labels.social;
         content.pause();
         content._wasPlaying = false;
       } else if (content.tagName === 'IFRAME') {
-        // Stop YouTube by clearing src
-        const oldSrc = content.src;
-        content.src = '';
-        content._savedSrc = oldSrc;
-        content._userActivated = false;
+        // Pause via postMessage — never clear src, preserves session
+        pauseYTPlayer();
       }
     }
     // Return content to original container
@@ -1923,10 +1926,7 @@ const sl = labels.social;
       miniPlayerSource.appendChild(content);
       content.style.cssText = 'width:100%;height:100%';
       content.classList.add('w-full', 'h-full');
-      // Restore iframe src so it can play again when scrolled to
-      if (content.tagName === 'IFRAME' && content._savedSrc) {
-        content.src = content._savedSrc;
-        delete content._savedSrc;
+      if (content.tagName === 'IFRAME') {
         // Re-add overlay so mini-player only triggers on next user click
         addIframeOverlay(miniPlayerSource, content);
       }
@@ -1979,8 +1979,8 @@ const sl = labels.social;
         if (!socialSettings.miniPlayerEnabled) {
           if (content.tagName === 'VIDEO' && !content.paused) content.pause();
           if (content.tagName === 'IFRAME' && content._userActivated) {
-            // Use postMessage to pause YouTube without reloading (avoids ads)
-            try { content.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch {}
+            // Pause via postMessage — never reload the iframe
+            pauseYTPlayer();
             content._userActivated = false;
             addIframeOverlay(container, content);
           }
@@ -2018,14 +2018,13 @@ const sl = labels.social;
     document.querySelectorAll('.aspect-video video').forEach(v => {
       if (v !== except && !v.paused) v.pause();
     });
-    document.querySelectorAll('.aspect-video iframe').forEach(f => {
-      if (f !== except && f._userActivated) {
-        try { f.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch {}
-        f._userActivated = false;
-        const c = f.closest('.aspect-video');
-        if (c && !c.querySelector('[style*="inset"]')) addIframeOverlay(c, f);
+    // Pause the shared YT player if it's not the exception
+    if (ytSharedIframe && ytSharedIframe !== except && ytSharedIframe._userActivated) {
+      pauseYTPlayer();
+      if (ytActiveContainer) {
+        addIframeOverlay(ytActiveContainer, ytSharedIframe);
       }
-    });
+    }
   }
 
   function observeVideos() {
@@ -2045,6 +2044,102 @@ const sl = labels.social;
       if (iframe) {
         addIframeOverlay(container, iframe);
       }
+    });
+  }
+
+  // ============================================================
+  // SINGLE SHARED YOUTUBE PLAYER — never destroy the iframe
+  // Keeps the same session so ads only play once (if at all)
+  // ============================================================
+  let ytSharedIframe = null; // the single iframe element, reused forever
+  let ytActiveContainer = null; // which .aspect-video currently hosts it
+
+  function getOrCreateYTIframe() {
+    if (ytSharedIframe) return ytSharedIframe;
+    ytSharedIframe = document.createElement('iframe');
+    ytSharedIframe.setAttribute('frameborder', '0');
+    ytSharedIframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+    ytSharedIframe.setAttribute('allowfullscreen', '');
+    ytSharedIframe.className = 'w-full h-full';
+    ytSharedIframe.style.cssText = 'width:100%;height:100%;border:none';
+    // Load with a blank video to establish session — first load gets the ad (if any)
+    ytSharedIframe.src = 'https://www.youtube-nocookie.com/embed/?enablejsapi=1';
+    return ytSharedIframe;
+  }
+
+  function playYTVideo(container, videoId) {
+    pauseAllMedia(null);
+    const iframe = getOrCreateYTIframe();
+
+    // If currently in another container, return placeholder to that container
+    if (ytActiveContainer && ytActiveContainer !== container) {
+      returnYTPlaceholder(ytActiveContainer);
+    }
+
+    // Save original placeholder content
+    if (!container._ytPlaceholderHTML) {
+      container._ytPlaceholderHTML = container.innerHTML;
+    }
+
+    // Move iframe into this container
+    container.innerHTML = '';
+    container.appendChild(iframe);
+    container.style.cursor = '';
+    container.classList.remove('yt-placeholder');
+    ytActiveContainer = container;
+
+    // Swap video ID without reloading iframe — preserves session, no new ads
+    const currentSrc = iframe.src || '';
+    const currentIdMatch = currentSrc.match(/\/embed\/([\w-]*)/);
+    const currentId = currentIdMatch ? currentIdMatch[1] : '';
+
+    if (currentId === videoId) {
+      // Same video, just replay
+      try { iframe.contentWindow.postMessage('{"event":"command","func":"seekTo","args":[0,true]}', '*'); } catch {}
+      try { iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*'); } catch {}
+    } else {
+      // Different video — change src but keep same iframe element (session preserved)
+      iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=1`;
+    }
+
+    iframe._userActivated = true;
+
+    // Observe this container for scroll-away behavior
+    if (!container._miniPlayerObserved) {
+      container._miniPlayerObserved = true;
+      miniPlayerObserver.observe(container);
+    }
+  }
+
+  function returnYTPlaceholder(container) {
+    if (!container) return;
+    // Remove iframe from container (don't destroy it — keep reference)
+    if (ytSharedIframe && ytSharedIframe.parentElement === container) {
+      container.removeChild(ytSharedIframe);
+    }
+    // Restore the thumbnail placeholder
+    if (container._ytPlaceholderHTML) {
+      container.innerHTML = container._ytPlaceholderHTML;
+      container.style.cursor = 'pointer';
+      container.classList.add('yt-placeholder');
+    }
+    if (ytActiveContainer === container) ytActiveContainer = null;
+  }
+
+  function pauseYTPlayer() {
+    if (ytSharedIframe) {
+      try { ytSharedIframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch {}
+      ytSharedIframe._userActivated = false;
+    }
+  }
+
+  function initYTPlaceholders() {
+    document.querySelectorAll('.yt-placeholder:not([data-yt-bound])').forEach(container => {
+      container.dataset.ytBound = '1';
+      container.addEventListener('click', () => {
+        const videoId = container.dataset.ytId;
+        if (videoId) playYTVideo(container, videoId);
+      });
     });
   }
 

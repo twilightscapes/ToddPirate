@@ -1,18 +1,19 @@
 <div align="center">
-  <h1>☠️ Pirate Social</h1>
+  <a href="https://piratesocial.app">
+    <img src="node-template/public/images/logoImage.svg" alt="Pirate Social Logo" width="200" height="200">
+  </a>
+  <h1>Pirate Social</h1>
   <h3>Own Your Content • Connect Your Community • Sail the Open Web</h3>
 
   <p>
     <img src="https://img.shields.io/badge/Astro-6-FF5D01?logo=astro" alt="Astro 6">
     <img src="https://img.shields.io/badge/Preact-10-673AB8?logo=preact" alt="Preact 10">
     <img src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss" alt="Tailwind 3">
-    <img src="https://img.shields.io/badge/Express-Node_22-339933?logo=node.js" alt="Node 22">
-    <img src="https://img.shields.io/badge/PostgreSQL-Prisma-4169E1?logo=postgresql" alt="PostgreSQL">
     <img src="https://img.shields.io/badge/PWA-Enabled-5A0FC8" alt="PWA Enabled">
   </p>
 
   <p>
-    <a href="https://piratesocial.app">Hub</a>
+    <a href="https://piratesocial.app">View Demo</a>
     ☠️
     <a href="https://github.com/piratewebsite/piratesocial/issues/new?labels=bug">Report Bug</a>
     ☠️
@@ -22,36 +23,41 @@
 
 ---
 
-**Pirate Social** is a federated social platform for photographers and creators. Every user owns their own website — a static Astro site deployed free on GitHub Pages. Sites connect through RSS feeds and a central hub, creating a decentralized social network where **your content is always yours**.
+Social media shouldn't be owned by a single company, run for profit, or subject to the whims of any one platform. **Pirate Social** is the fix — a completely independent, decentralized social network built on RSS where **every user owns their own website and content**.
+
+Each user gets a free static site deployed on GitHub Pages, Netlify, or Vercel. Sites discover and connect with each other through standard RSS feeds and a shared hub. No algorithms. No ads. No corporate overlord. If a platform disappears tomorrow, your content stays right where it is — on your site, under your control.
 
 Built on the foundation of [PIRATE CMS](https://github.com/piratewebsite/pirate), Pirate Social adds a full social layer: follows, likes, comments, real-time notifications, Bluesky cross-posting, YouTube playlists, RSS feed aggregation, and more.
 
-## Architecture
+<p align="center"><strong>Deploy free on GitHub Pages, Netlify, or Vercel</strong></p>
+
+## How It Works
+
+Every user runs their own independent website. The Pirate Social Hub connects these sites into a network using RSS — the same open standard that's powered the web for decades. Your site publishes an RSS feed, the hub aggregates feeds from everyone in the network, and you get a social timeline without giving up ownership of anything.
 
 ```
-┌───────────────────────────────────────────────────────┐
-│                  PIRATE SOCIAL HUB                     │
-│         Express + PostgreSQL on Fly.io                 │
-│                                                        │
-│  • GitHub OAuth           • Feed aggregation           │
-│  • Likes/Comments/Follows • Real-time notifications    │
-│  • User directory         • Bluesky cross-posting      │
-│  • External RSS feeds     • Admin/moderation           │
-│  • Squads                 • Search                     │
-└──────────────┬───────────────────┬────────────────────┘
-               │                   │
-        ┌──────▼──────┐     ┌──────▼──────┐
-        │  User Node  │     │  User Node  │
-        │  Astro SSG  │     │  Astro SSG  │
-        │  GitHub     │     │  GitHub     │
-        │  Pages      │     │  Pages      │
-        └─────────────┘     └─────────────┘
+        ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+        │  Your Site   │     │  Their Site  │     │  Any Site   │
+        │  (Astro SSG) │     │  (Astro SSG) │     │  (Astro SSG)│
+        │  GitHub Pages│     │  Netlify     │     │  Vercel     │
+        │       │      │     │       │      │     │       │     │
+        │   RSS Feed   │     │   RSS Feed   │     │   RSS Feed  │
+        └───────┬──────┘     └───────┬──────┘     └───────┬─────┘
+                │                    │                     │
+                └────────────┬───────┘─────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  PIRATE SOCIAL  │
+                    │      HUB        │
+                    │                 │
+                    │  Aggregates RSS │
+                    │  Follows/Likes  │
+                    │  Comments       │
+                    │  Notifications  │
+                    │  Directory      │
+                    │  Bluesky bridge │
+                    └─────────────────┘
 ```
-
-| Component | Repo | Hosting | Cost |
-|-----------|------|---------|------|
-| **User sites** (nodes) | Public template in this repo | GitHub Pages | Free |
-| **Hub** (backend API) | [piratesocial-hub](https://github.com/piratewebsite/piratesocial-hub) (private) | Fly.io + Supabase | ~$0–5/mo |
 
 ## Features
 
@@ -62,13 +68,15 @@ Built on the foundation of [PIRATE CMS](https://github.com/piratewebsite/pirate)
 - **Image optimization** via Astro + Sharp
 - **Visibility controls** — site only, site + social crosspost, or private (password protected)
 
-### 🌐 Federated Social Network
-- **Follow** other photographers across the network
+### 🌐 Decentralized Social Network
+- **RSS-powered federation** — sites connect through open standards, not proprietary APIs
+- **Follow** other photographers and creators across the network
 - **Like and comment** on posts — comments merge with Bluesky replies
 - **Real-time notifications** via Server-Sent Events
 - **Discover feed** — browse all public posts across the network
 - **User directory** with search
 - **Personalized timeline** — posts from people you follow + your RSS subscriptions
+- **No vendor lock-in** — your site works independently even without the hub
 
 ### 🦋 Bluesky Integration
 - **Connect your Bluesky account** via app password
@@ -78,13 +86,12 @@ Built on the foundation of [PIRATE CMS](https://github.com/piratewebsite/pirate)
 - **Like, reply, and interact** across both platforms
 
 ### 🎵 YouTube Player
-- **Ad-free playback** via `youtube-nocookie.com` embeds (no YouTube IFrame API)
+- **Ad-free playback** — no YouTube API loaded, no ads served
 - **Playlist support** with custom track list UI
 - **Audio-only mode** for music/podcasts
-- **Floating mini-player** — persists across page navigation with `transition:persist`
+- **Floating mini-player** — persists across page navigation
 - **Docked mode** — inline on any page via content blocks
 - **Start/end time trimming** per track
-- **Custom controls** via `postMessage` — play, pause, seek, scrubber bar
 
 ### 📄 Content Management
 - **Decap CMS** — edit posts, galleries, and settings from the browser via GitHub
@@ -94,12 +101,6 @@ Built on the foundation of [PIRATE CMS](https://github.com/piratewebsite/pirate)
 - **RSS feed generation** with custom photo/social XML namespaces
 - **External RSS subscriptions** — follow any RSS feed in your timeline
 
-### 🔧 Admin & Moderation
-- Moderation reports (pending/resolved/dismissed)
-- User banning
-- Post deletion
-- Squads — activity-window-based groups with Bluesky DID members
-
 ### ⚡ Performance & PWA
 - Static site generation — fast page loads, no server needed per user
 - PWA-ready with offline support and installable manifest
@@ -108,7 +109,7 @@ Built on the foundation of [PIRATE CMS](https://github.com/piratewebsite/pirate)
 
 ## Getting Started
 
-### For Users (join the network)
+### Join the network
 
 1. Sign in at [piratesocial.app](https://piratesocial.app) with GitHub
 2. The hub provisions your site repo automatically
@@ -133,45 +134,59 @@ npm run dev
 npm run build
 ```
 
+### Hosting Options
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <strong>GitHub Pages</strong><br>
+      <a href="https://github.com/piratewebsite/piratesocial/generate">Use Template</a>
+    </td>
+    <td align="center" width="33%">
+      <strong>Netlify</strong><br>
+      <a href="https://app.netlify.com/start/deploy?repository=https://github.com/piratewebsite/piratesocial">Deploy to Netlify</a>
+    </td>
+    <td align="center" width="33%">
+      <strong>Vercel</strong><br>
+      <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fpiratewebsite%2Fpiratesocial">Deploy to Vercel</a>
+    </td>
+  </tr>
+</table>
+
 ## Project Structure
 
 ```
-piratesocial/
-└── node-template/              # User site template (GitHub Pages)
-    ├── src/
-    │   ├── components/         # YouTubePlayer, Slideshow, Gallery,
-    │   │   │                   #   EXIF, SocialActions, Blocks
-    │   │   └── blocks/         # HeroBlock, ProfileBlock, YouTubeBlock,
-    │   │                       #   GalleryBlock, TextBlock, ImageBlock,
-    │   │                       #   LocationBlock, RecentPostsBlock
-    │   ├── content/            # Posts, galleries, slideshows, pages,
-    │   │                       #   settings, theme, labels, PWA config
-    │   ├── layouts/            # BaseLayout with floating player
-    │   ├── lib/                # Hub API client, site config
-    │   └── pages/              # index, about, social, posts/,
-    │                           #   galleries/, settings/, feed.xml
-    ├── public/admin/           # Decap CMS configuration
-    └── .github/workflows/      # Auto-deploy to GitHub Pages
+node-template/
+├── src/
+│   ├── components/         # YouTubePlayer, Slideshow, Gallery,
+│   │   │                   #   EXIF, SocialActions, Blocks
+│   │   └── blocks/         # HeroBlock, ProfileBlock, YouTubeBlock,
+│   │                       #   GalleryBlock, TextBlock, ImageBlock,
+│   │                       #   LocationBlock, RecentPostsBlock
+│   ├── content/            # Posts, galleries, slideshows, pages,
+│   │                       #   settings, theme, labels, PWA config
+│   ├── layouts/            # BaseLayout with floating player
+│   ├── lib/                # Hub API client, site config
+│   └── pages/              # index, about, social, posts/,
+│                           #   galleries/, settings/, feed.xml
+├── public/admin/           # Decap CMS configuration
+└── .github/workflows/      # Auto-deploy to GitHub Pages
 ```
-
-The hub backend lives in a [separate private repo](https://github.com/piratewebsite/piratesocial-hub).
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend framework | Astro 6 (SSG) |
-| UI components | Preact 10 |
+| Framework | Astro 6 (Static Site Generation) |
+| UI | Preact 10 |
 | Styling | Tailwind CSS 3 |
 | Content | Markdown + MDX |
 | CMS | Decap CMS (GitHub backend) |
-| Backend | Express.js on Node 22 |
-| Database | PostgreSQL (Supabase) + Prisma ORM |
 | Auth | GitHub OAuth |
+| Federation | RSS with custom photo/social namespaces |
 | Bluesky | AT Protocol (`@atproto/api`) |
-| Image processing | Sharp |
-| Hosting | GitHub Pages (sites) + Fly.io (hub) |
-| YouTube | `youtube-nocookie.com` iframes + `postMessage` |
+| Images | Sharp (auto-optimization) |
+| Hosting | GitHub Pages, Netlify, or Vercel (free) |
 
 ## Custom RSS Namespace
 
@@ -196,10 +211,6 @@ Posts syndicate with extended metadata for rich social feeds:
   </channel>
 </rss>
 ```
-
-## Related
-
-- [PIRATE CMS](https://github.com/piratewebsite/pirate) — the standalone CMS this project builds on
 
 ## License
 

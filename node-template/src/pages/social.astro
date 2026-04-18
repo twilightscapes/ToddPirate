@@ -250,19 +250,25 @@ const sl = labels.social;
   async function searchBskyPosts(query, cursor) {
     const params = { q: query, limit: '25' };
     if (cursor) params.cursor = cursor;
-    return bskyGet('app.bsky.feed.searchPosts', params);
+    return bskyGet('app.bsky.feed.searchPosts', params, true);
   }
 
   async function searchBskyActors(query, cursor) {
     const params = { q: query, limit: '25' };
     if (cursor) params.cursor = cursor;
-    return bskyGet('app.bsky.actor.searchActors', params);
+    return bskyGet('app.bsky.actor.searchActors', params, true);
   }
 
   async function searchBskyFeeds(query, cursor) {
     const params = { q: query, limit: '25' };
     if (cursor) params.cursor = cursor;
-    return bskyGet('app.bsky.unspecced.getPopularFeedGenerators', params);
+    return bskyGet('app.bsky.unspecced.getPopularFeedGenerators', params, true);
+  }
+
+  async function fetchCustomFeed(feedUri, cursor) {
+    const params = { feed: feedUri, limit: '25' };
+    if (cursor) params.cursor = cursor;
+    return bskyGet('app.bsky.feed.getFeed', params, true);
   }
 
   async function fetchTrendingTopics() {
@@ -646,7 +652,7 @@ const sl = labels.social;
 
   function renderFeedCard(feed) {
     return `
-      <div class="flex items-center gap-4 rounded-lg border border-theme-card-border bg-theme-card p-4">
+      <div class="feed-card flex items-center gap-4 rounded-lg border border-theme-card-border bg-theme-card p-4 cursor-pointer hover:border-theme-card-hover transition" data-feed-uri="${escapeHtml(feed.uri || '')}" data-feed-name="${escapeHtml(feed.displayName || 'Feed')}">
         ${feed.avatar ? `<img src="${escapeHtml(feed.avatar)}" class="h-12 w-12 rounded-lg" />` : '<div class="h-12 w-12 rounded-lg bg-theme-surface-hover flex items-center justify-center text-theme-muted">📡</div>'}
         <div class="flex-1 min-w-0">
           <span class="font-medium text-sm">${escapeHtml(feed.displayName || 'Untitled Feed')}</span>
@@ -655,6 +661,7 @@ const sl = labels.social;
         </div>
         <div class="text-right text-xs text-theme-faint shrink-0">
           <div>❤ ${feed.likeCount || 0}</div>
+          <div class="mt-1 text-theme-primary">View →</div>
         </div>
       </div>`;
   }
@@ -763,6 +770,7 @@ const sl = labels.social;
 
   function loadMore() {
     if (currentTab === 'feed') { piratePage++; loadFeedTab(true); }
+    else if (currentTab === 'discover' && activeFeedUri) { loadCustomFeedView(activeFeedUri, activeFeedName, true); }
     else if (currentTab === 'discover' && currentDiscoverSub === 'trending') { loadDiscoverTrending(true); }
     else if (currentTab === 'search') { loadSearchResults(true); }
   }
@@ -1041,6 +1049,48 @@ const sl = labels.social;
     } finally { isLoading = false; }
   }
 
+  let activeFeedUri = null;
+  let activeFeedName = null;
+
+  async function loadCustomFeedView(feedUri, feedName, append = false) {
+    activeFeedUri = feedUri;
+    activeFeedName = feedName;
+    if (isLoading) return;
+    isLoading = true;
+    if (!append) {
+      feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`;
+    }
+
+    try {
+      const data = await fetchCustomFeed(feedUri, bskyCursor);
+      bskyCursor = data.cursor || null;
+      hasMore = !!bskyCursor;
+      const posts = (data.feed || []).map(item => normalizeBskyPost(item));
+      const html = posts.map(p => renderPostCard(p)).join('');
+
+      const backBtn = `<button id="back-to-feeds" class="flex items-center gap-1 text-sm text-theme-muted hover:text-theme-text transition mb-4">← Back to feeds</button>
+        <h2 class="text-lg font-semibold mb-4">${escapeHtml(feedName)}</h2>`;
+
+      if (append) {
+        feedContainer.insertAdjacentHTML('beforeend', html);
+      } else {
+        feedContainer.innerHTML = backBtn + (html || `<div class="text-center py-8 text-theme-faint">${L.noPosts || 'No posts'}</div>`);
+        document.getElementById('back-to-feeds')?.addEventListener('click', () => {
+          activeFeedUri = null;
+          resetPagination();
+          loadDiscoverFeeds();
+        });
+      }
+      attachAllListeners();
+      initHlsVideos();
+    } catch {
+      if (!append) feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad || 'Failed to load'}</div>`;
+    } finally {
+      isLoading = false;
+      scrollSentinel.classList.toggle('hidden', !hasMore);
+    }
+  }
+
   // ============================================================
   // SEARCH TAB
   // ============================================================
@@ -1182,6 +1232,16 @@ const sl = labels.social;
     document.querySelectorAll('.share-btn:not([data-bound])').forEach(btn => {
       btn.dataset.bound = '1';
       btn.addEventListener('click', () => openShareModal(btn.dataset.url, btn.dataset.title));
+    });
+
+    // Feed cards — click to load that feed's posts
+    document.querySelectorAll('.feed-card:not([data-bound])').forEach(card => {
+      card.dataset.bound = '1';
+      card.addEventListener('click', () => {
+        const uri = card.dataset.feedUri;
+        const name = card.dataset.feedName;
+        if (uri) loadCustomFeedView(uri, name);
+      });
     });
   }
 

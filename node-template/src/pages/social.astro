@@ -171,7 +171,7 @@ const sl = labels.social;
   // YOUTUBE TAB
   // ============================================================
   async function loadYouTubeTab() {
-    feedContainer.innerHTML = \`
+    feedContainer.innerHTML = `
       <div class="space-y-4">
         <div class="rounded-lg border border-theme-card-border bg-theme-card p-4">
           <h2 class="text-lg font-semibold mb-3">YouTube Channels</h2>
@@ -182,7 +182,7 @@ const sl = labels.social;
           </div>
           <div id="yt-channels-list" class="space-y-3"></div>
         </div>
-      </div>\`;
+      </div>`;
     
     if (!token) {
       feedContainer.innerHTML += '<div class="text-center py-8 text-theme-faint">Sign in to manage YouTube subscriptions</div>';
@@ -191,8 +191,8 @@ const sl = labels.social;
 
     // Load channels
     try {
-      const res = await fetchWithTimeout(\`\${hubUrl}/api/youtube/channels\`, {
-        headers: { Authorization: \`Bearer \${token}\` }
+      const res = await fetchWithTimeout(`${hubUrl}/api/youtube/channels`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         youtubeChannels = await res.json();
@@ -219,27 +219,27 @@ const sl = labels.social;
       list.innerHTML = '<div class="text-center py-4 text-theme-faint text-sm">No channels subscribed yet.</div>';
       return;
     }
-    list.innerHTML = youtubeChannels.map(ch => \`
-      <div class="rounded border border-theme-input-border bg-theme-input-bg p-3" data-ch-id="\${ch.id}">
+    list.innerHTML = youtubeChannels.map(ch => `
+      <div class="rounded border border-theme-input-border bg-theme-input-bg p-3" data-ch-id="${ch.id}">
         <div class="flex items-start justify-between mb-2">
           <div class="min-w-0 flex-1">
-            <h3 class="font-medium text-sm">\${ch.name}</h3>
-            <p class="text-xs text-theme-faint">\${ch.videoCount || 5} videos per fetch</p>
+            <h3 class="font-medium text-sm">${ch.name}</h3>
+            <p class="text-xs text-theme-faint">${ch.videoCount || 5} videos per fetch</p>
           </div>
-          <button class="delete-ch-btn text-xs px-2 py-1 text-red-400 hover:text-red-300 transition" data-ch-id="\${ch.id}">Delete</button>
+          <button class="delete-ch-btn text-xs px-2 py-1 text-red-400 hover:text-red-300 transition" data-ch-id="${ch.id}">Delete</button>
         </div>
-        <button class="view-ch-videos-btn w-full text-xs rounded bg-theme-surface-hover py-1.5 hover:bg-theme-card-hover transition" data-ch-id="\${ch.id}">Show Videos (0)</button>
+        <button class="view-ch-videos-btn w-full text-xs rounded bg-theme-surface-hover py-1.5 hover:bg-theme-card-hover transition" data-ch-id="${ch.id}">Show Videos (0)</button>
         <div id="ch-videos-{ch.id}" class="hidden mt-2 space-y-1 text-xs"></div>
-      </div>\`).join('');
+      </div>`).join('');
     
     // Delete handlers
     list.querySelectorAll('.delete-ch-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('Unsubscribe?')) return;
         try {
-          const res = await fetchWithTimeout(\`\${hubUrl}/api/youtube/channels/\${btn.dataset.chId}\`, {
+          const res = await fetchWithTimeout(`${hubUrl}/api/youtube/channels/${btn.dataset.chId}`, {
             method: 'DELETE',
-            headers: { Authorization: \`Bearer \${token}\` }
+            headers: { Authorization: `Bearer ${token}` }
           });
           if (res.ok) {
             youtubeChannels = youtubeChannels.filter(c => c.id !== parseInt(btn.dataset.chId));
@@ -258,21 +258,21 @@ const sl = labels.social;
         const ch = youtubeChannels.find(c => c.id === parseInt(chId));
         if (!ch) return;
         
-        const container = document.getElementById(\`ch-videos-\${chId}\`);
+        const container = document.getElementById(`ch-videos-${chId}`);
         if (!container.classList.contains('hidden')) {
           container.classList.add('hidden');
-          btn.textContent = \`Show Videos (0)\`;
+          btn.textContent = `Show Videos (0)`;
           return;
         }
 
         btn.textContent = 'Loading...';
         try {
-          const res = await fetchWithTimeout(\`\${hubUrl}/api/youtube/feed?channelId=\${encodeURIComponent(ch.channelId)}&max=\${ch.videoCount || 5}\`);
+          const res = await fetchWithTimeout(`${hubUrl}/api/youtube/feed?channelId=${encodeURIComponent(ch.channelId)}&max=${ch.videoCount || 5}`);
           if (res.ok) {
             const { videos } = await res.json();
-            container.innerHTML = videos.map(v => \`
-              <a href="https://youtube.com/watch?v=\${v.videoId}" target="_blank" class="block truncate hover:text-theme-primary transition text-theme-muted">\${v.title}</a>\`).join('');
-            btn.textContent = \`Hide Videos (\${videos.length})\`;
+            container.innerHTML = videos.map(v => `
+              <a href="https://youtube.com/watch?v=${v.videoId}" target="_blank" class="block truncate hover:text-theme-primary transition text-theme-muted">${v.title}</a>`).join('');
+            btn.textContent = `Hide Videos (${videos.length})`;
           }
         } catch (err) {
           btn.textContent = 'Error loading';
@@ -287,13 +287,13 @@ const sl = labels.social;
     btn.textContent = 'Resolving...';
     btn.disabled = true;
     try {
-      const res = await fetchWithTimeout(\`\${hubUrl}/api/youtube/resolve?q=\${encodeURIComponent(q)}\`);
+      const res = await fetchWithTimeout(`${hubUrl}/api/youtube/resolve?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('Channel not found');
       const { channelId, name } = await res.json();
 
-      const subRes = await fetchWithTimeout(\`\${hubUrl}/api/youtube/channels\`, {
+      const subRes = await fetchWithTimeout(`${hubUrl}/api/youtube/channels`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: \`Bearer \${token}\` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ channelId, name })
       });
       if (subRes.ok) {

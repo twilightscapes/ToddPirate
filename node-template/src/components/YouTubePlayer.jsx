@@ -1,30 +1,16 @@
 /** @jsxImportSource preact */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'preact/hooks';
 
+// YouTube IFrame API types (global)
+// window.YT available after YouTube iframe_api script loads
+// window.YT.Player - player class
+// window.YT.PlayerState - state constants (UNSTARTED, ENDED, PLAYING, PAUSED, BUFFERING, CUED)
+
 // Extract YouTube video ID from various URL formats
 function getYouTubeId(url) {
   if (!url) return null;
   const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/);
   return m ? m[1] : null;
-}
-
-// Build youtube-nocookie.com embed URL (no ads, no tracking)
-// youtube-nocookie.com is YouTube's official ad-free embed for privacy compliance
-function getNoCookieEmbedUrl(videoId, startTime = 0, endTime = undefined, autoplay = 0, muted = 1) {
-  let url = `https://www.youtube-nocookie.com/embed/${videoId}?`;
-  const params = new URLSearchParams({
-    autoplay: autoplay.toString(),
-    muted: muted.toString(),
-    start: Math.floor(startTime).toString(),
-    controls: '1',
-    modestbranding: '1',
-    rel: '0',
-    playsinline: '1',
-  });
-  if (endTime) {
-    params.append('end', Math.floor(endTime).toString());
-  }
-  return url + params.toString();
 }
 
 // Default labels
@@ -116,15 +102,57 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   const current = playlist[currentIndex] || playlist[0];
   currentRef.current = current;
 
-  // ── YouTube IFrame API loader — DISABLED (use youtube-nocookie.com instead) ──
-  // useEffect(() => {
-  //   if (window.YT && window.YT.Player) return;
-  //   const tag = document.createElement('script');
-  //   tag.src = 'https://www.youtube.com/iframe_api';
-  //   document.head.appendChild(tag);
-  // }, []);
+  // ── Load YouTube IFrame API ──
+  useEffect(() => {
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      if (firstScriptTag && firstScriptTag.parentNode) {
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      }
+    }
+  }, []);
 
-  // ── Player event handlers (stable via useCallback, use refs for current state) ──
+  // ── Initialize YouTube player ONCE on mount ──
+  useEffect(() => {
+    if (playerRef.current || !iframeRef.current) return;
+
+    const initPlayer = () => {
+      if (!window.YT || !window.YT.Player) {
+        setTimeout(initPlayer, 50);
+        return;
+      }
+      if (playerRef.current) return;
+
+      const first = playlist[0];
+      if (!first) return;
+
+      playerRef.current = new window.YT.Player(iframeRef.current, {
+        width: '100%',
+        height: '100%',
+        videoId: first.id,
+        playerVars: {
+          autoplay: 1,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          start: first.startTime || 0,
+          end: first.endTime || undefined,
+          mute: isTouchDeviceRef.current ? 1 : 0,
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange,
+        },
+      });
+    };
+
+    initPlayer();
+  }, []);
+
+  // ── Player event handlers ──
   const onPlayerReady = useCallback((e) => {
     playerReadyRef.current = true;
     e.target.setVolume(volume);
@@ -147,10 +175,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
           setProgress(Math.max(0, t - cs));
           if (cur.endTime && t >= cur.endTime) {
             clearInterval(progressInterval.current);
-            // Auto-advance: Only auto-unmute if user has already gestured
-            if (hasUserGesturedRef.current && playerRef.current && playerRef.current.unMute) {
-              playerRef.current.unMute();
-            }
             handleNextRef.current?.();
           }
         }
@@ -177,28 +201,28 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   //   // ... rest of init code ...
   // }, []);
 
-  // ── Load new video ONLY when currentIndex changes (skip first render) ──
-  // NOTE: On user gesture (click), we already load synchronously in the callback
-  // This effect handles other cases and ensures state consistency
-  const isFirstRender = useRef(true);
+  // ── Load new video when currentIndex changes ──
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
     if (!playerRef.current || !playerReadyRef.current) return;
 
     const track = playlist[currentIndex];
     if (!track) return;
 
-    // If user gestured recently, they already loaded via callback - just ensure player is set up
-    // Otherwise load now (e.g., programmatic index change)
-    playerRef.current.loadVideoById({
-      videoId: track.id,
-      startSeconds: track.startTime || 0,
-      endSeconds: track.endTime,
-    });
-  }, [currentIndex]); // ONLY currentIndex
+    try {
+      playerRef.current.loadVideoById({
+        videoId: track.id,
+        startSeconds: track.startTime || 0,
+        endSeconds: track.endTime,
+      });
+
+      // Auto-play when track changes
+      if (hasUserGesturedRef.current) {
+        playerRef.current.playVideo();
+      }
+    } catch (error) {
+      console.error('[YouTubePlayer] Error loading video:', error);
+    }
+  }, [currentIndex, playlist]);
 
   // ── Volume ──
   useEffect(() => {
@@ -207,11 +231,20 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     }
   }, [volume]);
 
-  // ── Controls (simplified - just update currentIndex, iframe updates automatically) ──
+  // ── Controls ──
   const togglePlay = useCallback(() => {
-    // Note: youtube-nocookie embeds handle their own play/pause
-    // This no-op exists for UI compatibility
-  }, []);
+    if (!playerRef.current) return;
+    hasUserGesturedRef.current = true;
+    try {
+      if (isPlaying) {
+        playerRef.current.pauseVideo();
+      } else {
+        playerRef.current.playVideo();
+      }
+    } catch (error) {
+      console.error('[YouTubePlayer] Error toggling play:', error);
+    }
+  }, [isPlaying]);
 
   const skipTo = useCallback((idx) => {
     setCurrentIndex(idx);
@@ -233,8 +266,12 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     const pct = (e.clientX - rect.left) / rect.width;
     const clipStart = currentRef.current.startTime || 0;
     const time = clipStart + pct * duration;
-    playerRef.current.seekTo(time, true);
-    setProgress(pct * duration);
+    try {
+      playerRef.current.seekTo(time, true);
+      setProgress(pct * duration);
+    } catch (error) {
+      console.error('[YouTubePlayer] Error seeking:', error);
+    }
   }, [duration]);
 
   const formatTime = (s) => {
@@ -310,27 +347,27 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
       <section class={`mb-12 ${wrapperClass}`}>
         {heading && <h2 class="mb-4 text-xl font-semibold">{heading}</h2>}
 
-        {/* youtube-nocookie.com embed (ad-free) */}
+        {/* YouTube IFrame API player */}
         <div class="rounded-lg overflow-hidden mb-3" style="aspect-ratio:16/9;background:#000">
-          <iframe
-            width="100%"
-            height="100%"
-            src={`https://www.youtube-nocookie.com/embed/${current.id}?autoplay=0&controls=1&modestbranding=1&rel=0&playsinline=1${current.startTime ? `&start=${Math.floor(current.startTime)}` : ''}${current.endTime ? `&end=${Math.floor(current.endTime)}` : ''}`}
-            title={L.youtubeVideo}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            style={{ border: 'none', display: 'block' }}
+          <div
+            ref={iframeRef}
+            style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
           />
         </div>
 
         <div class="rounded-lg border overflow-hidden" style="border-color:var(--ps-card-border);background:var(--ps-card-bg)">
           <div class="flex items-center gap-3 p-4">
-            <button onClick={togglePlay} class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center" style="background:var(--ps-primary);color:#fff" aria-label={isPlaying ? L.pause : L.play}>
-              {isPlaying
-                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                : <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-              }
-            </button>
+            {/* Note: youtube-nocookie embeds have their own built-in play/pause controls, so we don't need a custom button */}
+            {hasPlaylist && (
+              <button onClick={prevTrack} class="p-2 rounded" style="color:var(--ps-text-muted)" title={L.previous}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="19,20 9,12 19,4"/><rect x="5" y="4" width="3" height="16"/></svg>
+              </button>
+            )}
+            {hasPlaylist && (
+              <button onClick={nextTrack} class="p-2 rounded" style="color:var(--ps-text-muted)" title={L.next}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><rect x="16" y="4" width="3" height="16"/></svg>
+              </button>
+            )}
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium truncate" style="color:var(--ps-text)">{current.title}</div>
               {started && (
@@ -411,16 +448,11 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         width: minimized ? '48px' : '100%',
       }}
     >
-      {/* youtube-nocookie.com embed (ad-free) */}
+      {/* YouTube IFrame API player */}
       <div style={getIframeStyle()}>
-        <iframe
-          width="100%"
-          height="100%"
-          src={`https://www.youtube-nocookie.com/embed/${current.id}?autoplay=0&controls=1&modestbranding=1&rel=0&playsinline=1${current.startTime ? `&start=${Math.floor(current.startTime)}` : ''}${current.endTime ? `&end=${Math.floor(current.endTime)}` : ''}`}
-          title={L.youtubeVideo}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          style={{ border: 'none', display: 'block', width: '100%', height: '100%' }}
+        <div
+          ref={iframeRef}
+          style={{ width: '100%', height: '100%', backgroundColor: '#000', display: audioOnly || minimized ? 'none' : 'block' }}
         />
       </div>
 

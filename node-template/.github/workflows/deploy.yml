@@ -71,10 +71,8 @@ jobs:
             cp user-repo/public/admin/config.yml build/public/admin/config.yml
           fi
           
-          # Preserve user's package.json if they added custom dependencies
-          if [ -f user-repo/package.json ]; then
-            cp user-repo/package.json build/package.json
-          fi
+          # NOTE: package.json is NOT copied from user repo.
+          # The template provides all required dependencies.
           
           # NOTE: astro.config.mjs is NOT copied from user repo.
           # The template version handles SITE_URL and BASE_PATH via env vars.

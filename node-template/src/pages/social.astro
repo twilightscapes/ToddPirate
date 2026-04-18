@@ -2433,8 +2433,16 @@ const sl = labels.social;
         <div class="flex items-start justify-between mb-2">
           <div class="min-w-0 flex-1">
             <h3 class="font-medium text-sm">${ch.name}</h3>
-            <div class="flex items-center gap-2 text-xs text-theme-faint">
-              <span>${ch.videoCount || 5} videos per fetch</span>
+            <div class="flex items-center gap-2 flex-wrap text-xs text-theme-faint">
+              <label class="flex items-center gap-1">
+                <span>Videos:</span>
+                <select class="video-count-select rounded bg-theme-input-border/50 px-1.5 py-0.5 text-xs border border-theme-input-border focus:outline-none focus:border-theme-primary" data-ch-id="${ch.id}">
+                  <option value="3" ${ch.videoCount === 3 ? 'selected' : ''}>3</option>
+                  <option value="5" ${ch.videoCount === 5 ? 'selected' : ''}>5</option>
+                  <option value="10" ${ch.videoCount === 10 ? 'selected' : ''}>10</option>
+                  <option value="15" ${ch.videoCount === 15 ? 'selected' : ''}>15</option>
+                </select>
+              </label>
               <label class="flex items-center gap-1">
                 <input type="checkbox" class="show-in-feed-checkbox" data-ch-id="${ch.id}" ${ch.feedEnabled ? 'checked' : ''} />
                 <span>Show in Feed</span>
@@ -2462,6 +2470,25 @@ const sl = labels.social;
         } catch (err) {
           console.error('Failed to update feed setting:', err);
           cb.checked = !cb.checked;
+        }
+      });
+    });
+
+    list.querySelectorAll('.video-count-select').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const chId = sel.dataset.chId;
+        const videoCount = parseInt(sel.value);
+        try {
+          await fetchWithTimeout(`${hubUrl}/api/youtube/channels/${chId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ videoCount })
+          });
+          const ch = youtubeChannels.find(c => c.id === chId);
+          if (ch) ch.videoCount = videoCount;
+        } catch (err) {
+          console.error('Failed to update video count:', err);
+          sel.value = youtubeChannels.find(c => c.id === chId)?.videoCount || 5;
         }
       });
     });

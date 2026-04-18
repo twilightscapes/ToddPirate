@@ -495,11 +495,14 @@ const sl = labels.social;
     let currentCard = null;
     let lastCheckedUrl = null;
     let fetchTimer = null;
+    let strippedUrl = false;
 
     inputEl.addEventListener('input', () => {
+      if (strippedUrl) { strippedUrl = false; return; }
       const url = extractFirstUrl(inputEl.value);
       if (!url || url === lastCheckedUrl) {
-        if (!url && currentCard) { currentCard = null; lastCheckedUrl = null; previewContainer.innerHTML = ''; }
+        if (!url && currentCard && !currentCard.removed) { /* keep card visible — URL was stripped */ return; }
+        if (!url && !currentCard) return;
         return;
       }
       clearTimeout(fetchTimer);
@@ -518,6 +521,15 @@ const sl = labels.social;
             }).then(r => r.json()).then(d => { if (d.blob && currentCard) currentCard.thumb = d.blob; }).catch(() => {});
           }
           renderLinkPreview(previewContainer, currentCard);
+          // Strip the detected URL from the textarea to save character space
+          const urlNoProt = url.replace(/^https?:\/\//, '');
+          let val = inputEl.value;
+          // Try full URL first, then bare domain
+          val = val.replace(new RegExp(`https?:\\/\\/${urlNoProt.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}`, 'g'), '');
+          val = val.replace(new RegExp(`(^|\\s)${urlNoProt.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?=\\s|$)`, 'g'), '$1');
+          inputEl.value = val.replace(/  +/g, ' ').trim();
+          strippedUrl = true;
+          inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         } catch {
           previewContainer.innerHTML = '';
           currentCard = null;

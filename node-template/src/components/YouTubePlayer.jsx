@@ -247,6 +247,20 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     sendCommand('setVolume', [volume]);
   }, [volume, sendCommand]);
 
+  // ── Track change — swap video via postMessage, never reload iframe ──
+  const prevIndexRef = useRef(-1);
+  useEffect(() => {
+    if (prevIndexRef.current === -1) {
+      prevIndexRef.current = currentIndex;
+      return;
+    }
+    if (prevIndexRef.current === currentIndex) return;
+    prevIndexRef.current = currentIndex;
+    const t = playlist[currentIndex];
+    if (!t) return;
+    sendCommand('loadVideoById', [{ videoId: t.id, startSeconds: t.startTime || 0, endSeconds: t.endTime || undefined }]);
+  }, [currentIndex, playlist, sendCommand]);
+
   // ── Controls ──
   const togglePlay = useCallback(() => {
     hasUserGesturedRef.current = true;
@@ -359,10 +373,12 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     return { aspectRatio: '16/9', background: '#000', width: '100%' };
   };
 
-  // Build the embed URL — changes when track changes (fresh iframe = no ad carryover)
-  const embedUrl = buildEmbedUrl(current.id, {
-    start: current.startTime,
-    end: current.endTime,
+  // Build the initial embed URL — only used for first track on mount
+  // Subsequent tracks swap via postMessage loadVideoById to preserve iframe session (no new ads)
+  const initialTrack = playlist[0];
+  const embedUrl = buildEmbedUrl(initialTrack.id, {
+    start: initialTrack.startTime,
+    end: initialTrack.endTime,
     mute: isTouchDeviceRef.current && !hasUserGesturedRef.current,
   });
 
@@ -375,11 +391,10 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
       <section class={`mb-12 ${wrapperClass}`}>
         {heading && <h2 class="mb-4 text-xl font-semibold">{heading}</h2>}
 
-        {/* Direct youtube-nocookie iframe — fresh src per track, NO YT.Player API */}
+        {/* Single persistent iframe — tracks swap via postMessage, no reload */}
         <div class="rounded-lg overflow-hidden mb-3" style="aspect-ratio:16/9;background:#000">
           <iframe
             ref={iframeRef}
-            key={current.id}
             src={embedUrl}
             onLoad={onIframeLoad}
             style={{ width: '100%', height: '100%', border: 'none' }}
@@ -509,7 +524,6 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
           }>
             <iframe
               ref={iframeRef}
-              key={current.id}
               src={embedUrl}
               onLoad={onIframeLoad}
               style={{ width: '100%', height: '100%', border: 'none' }}

@@ -10,25 +10,55 @@ const sl = labels.social;
     <div class="sticky top-[41px] md:top-[57px] z-30 -mx-4 px-3 py-2 md:px-4 md:py-4 mb-4 md:mb-8 flex items-center justify-between bg-theme-bg/95 backdrop-blur supports-[backdrop-filter]:bg-theme-bg/80 border-b border-theme-border">
       <h1 class="text-lg md:text-2xl font-bold font-heading whitespace-nowrap mr-3">{sl.heading}</h1>
       <div class="flex gap-1 md:gap-2">
-        <button id="tab-squads" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
-          {sl.tabSquads}
-        </button>
-        <button id="tab-timeline" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition active-tab">
-          {sl.tabTimeline}
-        </button>
-        <button id="tab-bluesky" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
-          {sl.tabBluesky}
+        <button id="tab-feed" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition active-tab">
+          {sl.tabFeed}
         </button>
         <button id="tab-discover" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
           {sl.tabDiscover}
         </button>
-        <button id="tab-people" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
-          {sl.tabPeople}
+        <button id="tab-squads" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
+          {sl.tabSquads}
+        </button>
+        <button id="tab-search" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
+          {sl.tabSearch}
         </button>
       </div>
     </div>
 
-    <!-- Timeline container -->
+    <!-- Filter pills (shown for Feed tab) -->
+    <div id="feed-filters" class="flex gap-1.5 flex-wrap mb-4">
+      <button class="filter-pill active-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="all">All</button>
+      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="no-reposts">No Reposts</button>
+      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="images">Images</button>
+      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="videos">Videos</button>
+      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="youtube">YouTube</button>
+      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="text">Text Only</button>
+      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="links">Links</button>
+      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="pirate">Pirate RSS</button>
+    </div>
+
+    <!-- Discover sub-tabs (shown for Discover tab) -->
+    <div id="discover-pills" class="hidden flex gap-1.5 flex-wrap mb-4">
+      <button class="discover-pill active-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-sub="trending">Trending</button>
+      <button class="discover-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-sub="people">People</button>
+      <button class="discover-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-sub="feeds">Custom Feeds</button>
+    </div>
+
+    <!-- Search bar (shown for Search tab) -->
+    <div id="search-bar" class="hidden mb-4">
+      <div class="flex gap-2">
+        <input id="search-input" type="text" placeholder="Search Bluesky posts, users, or feeds..."
+          class="flex-1 rounded-lg bg-theme-input-bg border border-theme-input-border px-4 py-2 text-sm focus:outline-none focus:border-theme-primary" />
+        <button id="search-btn" class="rounded-lg bg-theme-primary px-4 py-2 text-sm font-medium text-white hover:bg-theme-primary-hover transition">Search</button>
+      </div>
+      <div class="flex gap-1.5 mt-2">
+        <button class="search-type-pill active-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-type="posts">Posts</button>
+        <button class="search-type-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-type="users">Users</button>
+        <button class="search-type-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-type="feeds">Feeds</button>
+      </div>
+    </div>
+
+    <!-- Main content -->
     <div id="feed-container" class="space-y-6">
       <div class="text-center text-theme-faint py-12">
         <p>{sl.signInPrompt}</p>
@@ -38,43 +68,56 @@ const sl = labels.social;
       </div>
     </div>
 
-    <!-- Scroll sentinel for infinite scroll -->
+    <!-- Scroll sentinel -->
     <div id="scroll-sentinel" class="mt-8 flex justify-center py-4 hidden">
       <div class="loader-spinner h-6 w-6 border-2 border-theme-border border-t-theme-muted rounded-full animate-spin"></div>
+    </div>
+  </div>
+
+  <!-- Thread/Profile slide-over panel -->
+  <div id="slide-panel" class="fixed inset-0 z-50 hidden">
+    <div id="slide-backdrop" class="absolute inset-0 bg-black/60"></div>
+    <div id="slide-content" class="absolute right-0 top-0 h-full w-full max-w-lg bg-theme-bg border-l border-theme-border overflow-y-auto transform translate-x-full transition-transform duration-300">
+      <div class="sticky top-0 bg-theme-bg/95 backdrop-blur border-b border-theme-border p-4 flex items-center justify-between z-10">
+        <h2 id="slide-title" class="font-semibold text-sm"></h2>
+        <button id="slide-close" class="text-theme-muted hover:text-theme-text text-xl">✕</button>
+      </div>
+      <div id="slide-body" class="p-4 space-y-4"></div>
     </div>
   </div>
 </BaseLayout>
 
 <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
 <script is:inline define:vars={{ hubUrl: siteConfig.hubUrl, L: labels.social }}>
+  // ============================================================
+  // STATE
+  // ============================================================
   const token = localStorage.getItem('ps_token');
   const feedContainer = document.getElementById('feed-container');
   const scrollSentinel = document.getElementById('scroll-sentinel');
+  const filterBar = document.getElementById('feed-filters');
+  const discoverPills = document.getElementById('discover-pills');
+  const searchBar = document.getElementById('search-bar');
 
-  let currentPage = 1;
-  let currentTab = 'timeline';
+  let currentTab = 'feed';
+  let currentFilter = 'all';
+  let currentDiscoverSub = 'trending';
+  let currentSearchType = 'posts';
   let bskyCursor = null;
+  let piratePage = 1;
   let isLoading = false;
   let hasMore = true;
-
-  // Infinite scroll via IntersectionObserver
-  const scrollObserver = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && !isLoading && hasMore) {
-      currentPage++;
-      loadFeed(true);
-    }
-  }, { rootMargin: '400px' });
-  scrollObserver.observe(scrollSentinel);
-
-  function fetchWithTimeout(url, opts = {}, ms = 8000) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), ms);
-    return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(timer));
-  }
-
-  // --- Bluesky Session Management (browser-side, like skypost) ---
   let bskySession = null;
+  let myHandle = null;
+  let myDid = null;
+  let myAvatar = null;
+  // Track user's own likes/reposts for optimistic UI
+  let myLikes = {};    // uri -> likeUri
+  let myReposts = {};  // uri -> repostUri
 
+  // ============================================================
+  // BLUESKY SESSION MANAGEMENT
+  // ============================================================
   function loadBskySession() {
     try {
       const stored = localStorage.getItem('ps_bsky_session');
@@ -83,391 +126,509 @@ const sl = labels.social;
     return bskySession;
   }
 
-  function saveBskySession(session) {
-    bskySession = session;
-    localStorage.setItem('ps_bsky_session', JSON.stringify(session));
+  function saveBskySession(s) {
+    bskySession = s;
+    localStorage.setItem('ps_bsky_session', JSON.stringify(s));
   }
 
   async function ensureBskySession() {
-    // Return cached session if we have one
     if (bskySession?.accessJwt) return bskySession;
     loadBskySession();
     if (bskySession?.accessJwt) return bskySession;
-
-    // Get session from hub (hub calls createSession with stored app password)
     if (!token) return null;
     try {
-      console.log('[PS] Fetching Bluesky session from hub...');
-      const res = await fetchWithTimeout(`${hubUrl}/api/bluesky/session`, {
-        headers: { Authorization: `Bearer ${token}` },
-      }, 10000);
-      console.log('[PS] Session response:', res.status);
-      if (res.ok) {
-        const data = await res.json();
-        console.log('[PS] Got session for:', data.handle);
-        saveBskySession(data);
-        return data;
-      }
-      const errData = await res.json().catch(() => ({}));
-      console.error('[PS] Session error:', res.status, errData.error);
-    } catch (err) {
-      console.error('[PS] Session fetch failed:', err.message);
-    }
+      const res = await fetchTimeout(`${hubUrl}/api/bluesky/session`, { headers: { Authorization: `Bearer ${token}` } }, 10000);
+      if (res.ok) { const d = await res.json(); saveBskySession(d); return d; }
+    } catch {}
     return null;
   }
 
   async function refreshBskySession() {
     if (!bskySession?.refreshJwt) return null;
     try {
-      const res = await fetchWithTimeout('https://bsky.social/xrpc/com.atproto.server.refreshSession', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${bskySession.refreshJwt}` },
+      const res = await fetchTimeout('https://bsky.social/xrpc/com.atproto.server.refreshSession', {
+        method: 'POST', headers: { Authorization: `Bearer ${bskySession.refreshJwt}` },
       }, 8000);
       if (res.ok) {
-        const data = await res.json();
-        bskySession.accessJwt = data.accessJwt;
-        if (data.refreshJwt) bskySession.refreshJwt = data.refreshJwt;
+        const d = await res.json();
+        bskySession.accessJwt = d.accessJwt;
+        if (d.refreshJwt) bskySession.refreshJwt = d.refreshJwt;
         saveBskySession(bskySession);
         return bskySession;
-      } else {
-        // Refresh failed — clear session and re-create from hub
-        localStorage.removeItem('ps_bsky_session');
-        bskySession = null;
-        return ensureBskySession();
       }
-    } catch {
-      return null;
-    }
+      localStorage.removeItem('ps_bsky_session');
+      bskySession = null;
+      return ensureBskySession();
+    } catch { return null; }
   }
 
-  // Tab switching
-  document.querySelectorAll('[id^="tab-"]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelector('.active-tab')?.classList.remove('active-tab', 'bg-theme-surface-hover');
-      btn.classList.add('active-tab', 'bg-theme-surface-hover');
-      currentTab = btn.id.replace('tab-', '');
-      currentPage = 1;
-      bskyCursor = null;
-      hasMore = true;
-      loadFeed();
-    });
-  });
+  // ============================================================
+  // DIRECT AT PROTOCOL CALLS
+  // ============================================================
+  const BSKY_PUBLIC = 'https://public.api.bsky.app/xrpc';
+  const BSKY_AUTH = 'https://bsky.social/xrpc';
 
-  // Login button
-  document.getElementById('social-login')?.addEventListener('click', () => {
-    window.location.href = `${hubUrl}/api/auth/github`;
-  });
+  function fetchTimeout(url, opts = {}, ms = 8000) {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), ms);
+    return fetch(url, { ...opts, signal: c.signal }).finally(() => clearTimeout(t));
+  }
 
-  async function loadFeed(append = false) {
-    if (isLoading) return;
-    isLoading = true;
-    if (!append) {
-      feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.loading}</div>`;
-      hasMore = true;
+  async function bskyGet(endpoint, params = {}, auth = false) {
+    const base = auth ? BSKY_AUTH : BSKY_PUBLIC;
+    const qs = new URLSearchParams(params).toString();
+    const url = `${base}/${endpoint}${qs ? '?' + qs : ''}`;
+    const headers = {};
+    if (auth && bskySession?.accessJwt) headers.Authorization = `Bearer ${bskySession.accessJwt}`;
+    const res = await fetchTimeout(url, { headers }, 10000);
+    if (res.status === 401 && auth) {
+      const refreshed = await refreshBskySession();
+      if (refreshed?.accessJwt) {
+        headers.Authorization = `Bearer ${refreshed.accessJwt}`;
+        const retry = await fetchTimeout(url, { headers }, 10000);
+        if (!retry.ok) throw new Error(`API ${retry.status}`);
+        return retry.json();
+      }
+      throw new Error('Auth expired');
     }
-    scrollSentinel.classList.toggle('hidden', !append);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return res.json();
+  }
 
+  async function bskyPost(endpoint, body) {
+    const url = `${BSKY_AUTH}/${endpoint}`;
+    const res = await fetchTimeout(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${bskySession.accessJwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }, 10000);
+    if (res.status === 401) {
+      const refreshed = await refreshBskySession();
+      if (refreshed?.accessJwt) {
+        const retry = await fetchTimeout(url, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${refreshed.accessJwt}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }, 10000);
+        if (!retry.ok) throw new Error(`API ${retry.status}`);
+        return retry.json();
+      }
+      throw new Error('Auth expired');
+    }
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return res.json();
+  }
+
+  // --- Feed fetchers ---
+  async function fetchBskyTimeline(cursor) {
+    const params = { limit: '25' };
+    if (cursor) params.cursor = cursor;
+    return bskyGet('app.bsky.feed.getTimeline', params, true);
+  }
+
+  async function fetchBskyDiscover(cursor) {
+    // Popular/discover feed
+    const params = { limit: '25', feed: 'at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.generator/whats-hot' };
+    if (cursor) params.cursor = cursor;
+    return bskyGet('app.bsky.feed.getFeed', params, true);
+  }
+
+  async function fetchBskyAuthorFeed(handle, cursor) {
+    const params = { actor: handle, limit: '15', filter: 'posts_and_author_threads' };
+    if (cursor) params.cursor = cursor;
+    return bskyGet('app.bsky.feed.getAuthorFeed', params);
+  }
+
+  async function fetchBskyThread(uri) {
+    return bskyGet('app.bsky.feed.getPostThread', { uri, depth: '10' });
+  }
+
+  async function fetchBskyProfile(handle) {
+    return bskyGet('app.bsky.actor.getProfile', { actor: handle });
+  }
+
+  async function searchBskyPosts(query, cursor) {
+    const params = { q: query, limit: '25' };
+    if (cursor) params.cursor = cursor;
+    return bskyGet('app.bsky.feed.searchPosts', params);
+  }
+
+  async function searchBskyActors(query, cursor) {
+    const params = { q: query, limit: '25' };
+    if (cursor) params.cursor = cursor;
+    return bskyGet('app.bsky.actor.searchActors', params);
+  }
+
+  async function searchBskyFeeds(query, cursor) {
+    const params = { q: query, limit: '25' };
+    if (cursor) params.cursor = cursor;
+    return bskyGet('app.bsky.unspecced.getPopularFeedGenerators', params);
+  }
+
+  async function fetchTrendingTopics() {
     try {
-      let url;
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-      if (currentTab === 'squads' && token) {
-        renderSquadsView();
-        isLoading = false;
-        hasMore = false;
-        scrollSentinel.classList.add('hidden');
-        return;
-      } else if (currentTab === 'timeline' && token) {
-        url = `${hubUrl}/api/timeline?page=${currentPage}`;
-      } else if (currentTab === 'bluesky' && token) {
-        // Get browser-side Bluesky session, use hub as thin proxy (server-to-server to bsky.social)
-        const session = await ensureBskySession();
-        console.log('[PS] Bluesky session:', session ? 'got accessJwt' : 'NONE');
-        if (!session?.accessJwt) {
-          feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.connectBluesky}</div>`;
-          isLoading = false;
-          hasMore = false;
-          scrollSentinel.classList.add('hidden');
-          return;
-        }
-        try {
-          let proxyUrl = `${hubUrl}/api/bluesky-feed/proxy/timeline?limit=20`;
-          if (bskyCursor) proxyUrl += `&cursor=${encodeURIComponent(bskyCursor)}`;
-          console.log('[PS] Fetching timeline via hub proxy...');
-          const res = await fetch(proxyUrl, {
-            headers: { 'Authorization': `Bearer ${session.accessJwt}` },
-          });
-          console.log('[PS] Proxy response:', res.status);
-          if (res.ok) {
-            const raw = await res.json();
-            const posts = (raw.feed || []).map(item => normalizeBskyPostClient(item));
-            renderBskyPosts({ posts, cursor: raw.cursor || null }, append);
-            return;
-          }
-          const errBody = await res.text().catch(() => '');
-          console.error('[PS] Proxy error body:', errBody);
-          // If 401/expired, refresh and retry once
-          if (res.status === 401 || res.status === 400) {
-            console.log('[PS] Token expired, refreshing...');
-            const refreshed = await refreshBskySession();
-            if (refreshed?.accessJwt) {
-              const retry = await fetch(proxyUrl, {
-                headers: { 'Authorization': `Bearer ${refreshed.accessJwt}` },
-              });
-              if (retry.ok) {
-                const raw = await retry.json();
-                const posts = (raw.feed || []).map(item => normalizeBskyPostClient(item));
-                renderBskyPosts({ posts, cursor: raw.cursor || null }, append);
-                return;
-              }
-            }
-          }
-        } catch (err) {
-          console.error('[PS] Proxy error:', err.message);
-        }
-        feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad}</div>`;
-        isLoading = false;
-        hasMore = false;
-        scrollSentinel.classList.add('hidden');
-        return;
-      } else if (currentTab === 'discover' || (currentTab === 'timeline' && !token)) {
-        url = `${hubUrl}/api/timeline/discover?page=${currentPage}`;
-      } else if (currentTab === 'people') {
-        url = `${hubUrl}/api/directory?page=${currentPage}`;
-        const res = await fetchWithTimeout(url, { headers });
-        const data = await res.json();
-        renderPeople(data, append);
-        isLoading = false;
-        scrollSentinel.classList.toggle('hidden', !hasMore);
-        return;
-      }
-
-      const res = await fetchWithTimeout(url, { headers });
-      const data = await res.json();
-      renderPosts(data, append);
-    } catch (err) {
-      if (!append) feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad}</div>`;
-      hasMore = false;
-    } finally {
-      isLoading = false;
-      scrollSentinel.classList.toggle('hidden', !hasMore);
-    }
+      return await bskyGet('app.bsky.unspecced.getTrendingTopics', {});
+    } catch { return { topics: [], suggested: [] }; }
   }
 
-  function renderPosts(data, append) {
-    const html = (data.posts || []).map(post => {
-      const isExternal = post.source === 'external';
-
-      // Author line: Pirate user or external feed info
-      const authorHtml = isExternal
-        ? `<div class="flex items-center gap-2">
-            ${post.feed?.iconUrl ? `<img src="${escapeHtml(post.feed.iconUrl)}" class="h-8 w-8 rounded" onerror="this.style.display='none'" />` : '<div class="h-8 w-8 rounded bg-theme-surface-hover flex items-center justify-center text-theme-muted text-xs">RSS</div>'}
-            <div>
-              <span class="font-medium text-sm">${escapeHtml(post.feed?.title || post.author || 'External')}</span>
-              <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-theme-input-bg text-theme-muted">RSS</span>
-              <time class="block text-xs text-theme-faint">${new Date(post.pubDate).toLocaleDateString()}</time>
-            </div>
-          </div>`
-        : `<div class="flex items-center gap-3">
-            ${post.user?.avatarUrl ? `<img src="${escapeHtml(post.user.avatarUrl)}" class="h-8 w-8 rounded-full" />` : ''}
-            <div>
-              <a href="${hubUrl}/../${escapeHtml(post.user?.username || '')}" class="font-medium text-sm hover:underline">${escapeHtml(post.user?.displayName || post.user?.username || 'Unknown')}</a>
-              <time class="block text-xs text-theme-faint">${new Date(post.pubDate).toLocaleDateString()}</time>
-            </div>
-          </div>`;
-
-      // Interaction bar: only Pirate posts have likes/comments
-      const shareBtn = `<button class="share-btn hover:text-green-500 transition" data-url="${escapeHtml(post.link || '')}" data-title="${escapeHtml(post.title || '')}">${L.shareButton}</button>`;
-      const actionsHtml = isExternal
-        ? `<a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-theme-text">${L.readButton}</a>${shareBtn}`
-        : `<button class="like-btn hover:text-red-400 transition ${post.hasLiked ? 'text-red-400' : ''}" data-post-id="${post.id}">
-              ${post.hasLiked ? '♥' : '♡'} ${post.likeCount || post._count?.likes || 0}
-            </button>
-            <button class="comment-btn hover:text-theme-primary transition" data-post-id="${post.id}">
-              💬 ${post.commentCount || post._count?.comments || 0}
-            </button>
-            ${shareBtn}
-            ${post.link ? `<a href="${escapeHtml(post.link)}" target="_blank" class="hover:text-theme-text ml-auto">${L.viewButton}</a>` : ''}`;
-
-      // Build embed HTML for rich content (Bluesky images, videos, link cards, quotes)
-      const embed = post.embedData || {};
-      let embedHtml = '';
-
-      // Multiple images (gallery grid)
-      if (embed.images?.length > 1) {
-        embedHtml += `<div class="grid grid-cols-2 gap-1 mt-2 rounded overflow-hidden">
-          ${embed.images.map(img => `<img src="${escapeHtml(img.fullsize || img.thumb)}" alt="${escapeHtml(img.alt)}" class="w-full object-cover aspect-square" loading="lazy" onerror="this.style.display='none'" />`).join('')}
-        </div>`;
-      }
-
-      // Video
-      if (embed.video?.playlist) {
-        embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video relative">
-          <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
-        </div>`;
-      }
-
-      // External link card
-      if (embed.external?.uri) {
-        const ytId = getYouTubeId(embed.external.uri);
-        if (ytId) {
-          embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
-        } else {
-          embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-theme-input-border overflow-hidden hover:border-theme-card-hover transition">
-            ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
-            <div class="p-3">
-              <div class="text-sm font-medium text-theme-text line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
-              ${embed.external.description ? `<div class="text-xs text-theme-faint mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
-              <div class="text-xs text-theme-faint mt-1">${escapeHtml(new URL(embed.external.uri).hostname)}</div>
-            </div>
-          </a>`;
-        }
-      }
-
-      // Quote post
-      if (embed.quote?.text) {
-        embedHtml += `<div class="mt-2 rounded border border-theme-input-border p-3 bg-theme-surface/50">
-          <div class="text-xs text-theme-muted mb-1">
-            <span class="font-medium text-theme-text">${escapeHtml(embed.quote.author)}</span>
-            <span class="text-theme-faint ml-1">@${escapeHtml(embed.quote.handle)}</span>
-          </div>
-          <p class="text-sm text-theme-text line-clamp-4">${escapeHtml(embed.quote.text)}</p>
-        </div>`;
-      }
-
-      // Primary image: use single embed image or imageUrl (skip if we showed a gallery above)
-      const primaryImage = (embed.images?.length === 1)
-        ? embed.images[0].fullsize || embed.images[0].thumb
-        : (!embed.images?.length ? post.imageUrl : null);
-
-      return `
-        <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden">
-          ${primaryImage ? `<div class="bg-black flex justify-center"><img src="${escapeHtml(primaryImage)}" alt="${escapeHtml(embed.images?.[0]?.alt || post.title)}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>` : ''}
-          <div class="p-4">
-            <div class="mb-3">${authorHtml}</div>
-            ${!embed.external?.uri ? `<h3 class="font-semibold"><a href="${escapeHtml(post.link)}" target="_blank" class="hover:underline">${formatText(post.title)}</a></h3>` : ''}
-            ${post.description && post.description !== post.title && !embed.external?.uri ? `<p class="mt-1 text-sm text-theme-muted">${formatText(post.description)}</p>` : ''}
-            ${embedHtml}
-            ${post.exifData ? `<div class="mt-2 text-xs text-theme-faint">${formatExif(post.exifData)}</div>` : ''}
-            <div class="mt-3 flex items-center gap-4 text-sm text-theme-muted">
-              ${actionsHtml}
-            </div>
-          </div>
-        </article>
-      `;
-    }).join('');
-
-    if (append) {
-      feedContainer.insertAdjacentHTML('beforeend', html);
-    } else {
-      feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">${L.noPosts}</div>`;
-    }
-
-    hasMore = !!data.hasMore;
-    attachInteractionListeners();
-    attachShareListeners();
-    initHlsVideos();
+  // --- Interactions ---
+  async function likeBskyPost(uri, cid) {
+    const res = await bskyPost('com.atproto.repo.createRecord', {
+      repo: bskySession.did, collection: 'app.bsky.feed.like',
+      record: { subject: { uri, cid }, createdAt: new Date().toISOString(), '$type': 'app.bsky.feed.like' },
+    });
+    myLikes[uri] = res.uri;
+    return res.uri;
   }
 
-  function renderBskyPosts(data, append) {
-    const posts = data.posts || [];
-    bskyCursor = data.cursor || null;
+  async function unlikeBskyPost(uri) {
+    const likeUri = myLikes[uri];
+    if (!likeUri) return;
+    const rkey = likeUri.split('/').pop();
+    await bskyPost('com.atproto.repo.deleteRecord', {
+      repo: bskySession.did, collection: 'app.bsky.feed.like', rkey,
+    });
+    delete myLikes[uri];
+  }
 
-    const html = posts.map(post => {
-      const embed = post.embedData || {};
-      let embedHtml = '';
+  async function repostBskyPost(uri, cid) {
+    const res = await bskyPost('com.atproto.repo.createRecord', {
+      repo: bskySession.did, collection: 'app.bsky.feed.repost',
+      record: { subject: { uri, cid }, createdAt: new Date().toISOString(), '$type': 'app.bsky.feed.repost' },
+    });
+    myReposts[uri] = res.uri;
+    return res.uri;
+  }
 
-      // Multiple images
-      if (embed.images?.length > 1) {
-        embedHtml += `<div class="grid grid-cols-2 gap-1 mt-2 rounded overflow-hidden">
-          ${embed.images.map(img => `<img src="${escapeHtml(img.fullsize || img.thumb)}" alt="${escapeHtml(img.alt || '')}" class="w-full object-cover aspect-square" loading="lazy" onerror="this.style.display='none'" />`).join('')}
-        </div>`;
+  async function unrepostBskyPost(uri) {
+    const repostUri = myReposts[uri];
+    if (!repostUri) return;
+    const rkey = repostUri.split('/').pop();
+    await bskyPost('com.atproto.repo.deleteRecord', {
+      repo: bskySession.did, collection: 'app.bsky.feed.repost', rkey,
+    });
+    delete myReposts[uri];
+  }
+
+  // ============================================================
+  // NORMALIZE POST DATA
+  // ============================================================
+  function normalizeBskyPost(item) {
+    const post = item.post;
+    const reason = item.reason;
+    const embed = post.embed;
+    let embedData = {};
+    let imageUrl = null;
+
+    if (embed?.$type === 'app.bsky.embed.images#view') {
+      embedData.images = embed.images.map(i => ({ thumb: i.thumb, fullsize: i.fullsize, alt: i.alt || '' }));
+      if (embed.images[0]) imageUrl = embed.images[0].fullsize || embed.images[0].thumb;
+    }
+    if (embed?.$type === 'app.bsky.embed.video#view') {
+      embedData.video = { playlist: embed.playlist, thumb: embed.thumbnail, alt: embed.alt || '' };
+    }
+    if (embed?.$type === 'app.bsky.embed.external#view') {
+      embedData.external = { uri: embed.external.uri, title: embed.external.title, description: embed.external.description, thumb: embed.external.thumb };
+    }
+    if (embed?.$type === 'app.bsky.embed.recordWithMedia#view') {
+      const media = embed.media;
+      if (media?.$type === 'app.bsky.embed.images#view') {
+        embedData.images = media.images.map(i => ({ thumb: i.thumb, fullsize: i.fullsize, alt: i.alt || '' }));
+        if (media.images[0]) imageUrl = media.images[0].fullsize || media.images[0].thumb;
       }
-
-      // Single image
-      if (embed.images?.length === 1) {
-        embedHtml += `<div class="mt-2 bg-black flex justify-center rounded overflow-hidden"><img src="${escapeHtml(embed.images[0].fullsize || embed.images[0].thumb)}" alt="${escapeHtml(embed.images[0].alt || '')}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>`;
+      if (media?.$type === 'app.bsky.embed.video#view') {
+        embedData.video = { playlist: media.playlist, thumb: media.thumbnail, alt: media.alt || '' };
       }
-
-      // Video
-      if (embed.video?.playlist) {
-        embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
-          <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
-        </div>`;
+      if (media?.$type === 'app.bsky.embed.external#view') {
+        embedData.external = { uri: media.external.uri, title: media.external.title, description: media.external.description, thumb: media.external.thumb };
       }
-
-      // External link card
-      if (embed.external?.uri) {
-        const ytId = getYouTubeId(embed.external.uri);
-        if (ytId) {
-          embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
-        } else {
-          embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-theme-input-border overflow-hidden hover:border-theme-card-hover transition">
-            ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
-            <div class="p-3">
-              <div class="text-sm font-medium text-theme-text line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
-              ${embed.external.description ? `<div class="text-xs text-theme-faint mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
-            </div>
-          </a>`;
-        }
+      const rec = embed.record?.record;
+      if (rec?.value?.text) {
+        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
       }
+    }
+    if (embed?.$type === 'app.bsky.embed.record#view') {
+      const rec = embed.record;
+      if (rec?.value?.text) {
+        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
+      }
+    }
 
-      // Quote
-      if (embed.quote?.text) {
-        embedHtml += `<div class="mt-2 rounded border border-theme-input-border p-3 bg-theme-surface/50">
-          <div class="text-xs text-theme-muted mb-1">
-            <span class="font-medium text-theme-text">${escapeHtml(embed.quote.author)}</span>
-            <span class="text-theme-faint ml-1">@${escapeHtml(embed.quote.handle)}</span>
+    // Track viewer state for likes/reposts
+    const viewer = post.viewer || {};
+    if (viewer.like) myLikes[post.uri] = viewer.like;
+    if (viewer.repost) myReposts[post.uri] = viewer.repost;
+
+    return {
+      type: 'bluesky',
+      uri: post.uri, cid: post.cid,
+      author: { handle: post.author.handle, displayName: post.author.displayName || post.author.handle, avatar: post.author.avatar || '', did: post.author.did },
+      text: post.record?.text || '',
+      pubDate: post.indexedAt,
+      imageUrl,
+      embedData: Object.keys(embedData).length ? embedData : null,
+      likeCount: post.likeCount || 0,
+      repostCount: post.repostCount || 0,
+      replyCount: post.replyCount || 0,
+      liked: !!viewer.like,
+      reposted: !!viewer.repost,
+      repostBy: reason?.$type === 'app.bsky.feed.defs#reasonRepost'
+        ? { handle: reason.by.handle, displayName: reason.by.displayName || reason.by.handle }
+        : null,
+      link: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split('/').pop()}`,
+    };
+  }
+
+  function normalizePiratePost(post) {
+    const isExternal = post.source === 'external';
+    return {
+      type: isExternal ? 'rss' : 'pirate',
+      id: post.id,
+      author: isExternal
+        ? { handle: post.feed?.title || post.author || 'RSS', displayName: post.feed?.title || post.author || 'External', avatar: post.feed?.iconUrl || '', isRss: true }
+        : { handle: post.user?.username || '', displayName: post.user?.displayName || post.user?.username || 'Unknown', avatar: post.user?.avatarUrl || '' },
+      text: post.description || '',
+      title: post.title || '',
+      pubDate: post.pubDate,
+      imageUrl: post.imageUrl,
+      embedData: post.embedData || null,
+      exifData: post.exifData || null,
+      link: post.link || '',
+      likeCount: post.likeCount || post._count?.likes || 0,
+      commentCount: post.commentCount || post._count?.comments || 0,
+      hasLiked: post.hasLiked || false,
+    };
+  }
+
+  // ============================================================
+  // FILTER LOGIC
+  // ============================================================
+  function matchesFilter(post, filter) {
+    if (filter === 'all') return true;
+    if (filter === 'pirate') return post.type === 'pirate' || post.type === 'rss';
+    if (filter === 'no-reposts') return !post.repostBy;
+    const embed = post.embedData || {};
+    if (filter === 'images') return !!embed.images?.length || !!post.imageUrl;
+    if (filter === 'videos') return !!embed.video?.playlist;
+    if (filter === 'youtube') {
+      const ytUri = embed.external?.uri;
+      return ytUri && getYouTubeId(ytUri);
+    }
+    if (filter === 'text') return !embed.images && !embed.video && !embed.external && !post.imageUrl;
+    if (filter === 'links') return !!embed.external?.uri;
+    return true;
+  }
+
+  // ============================================================
+  // RENDERING — UNIFIED POST CARD
+  // ============================================================
+  function escapeHtml(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function formatText(str) {
+    if (!str) return '';
+    let text = str.replace(/&#xA;/gi, '\n').replace(/\[contains quote post or other embedded content\]/gi, '').trim();
+    return escapeHtml(text).replace(/\n/g, '<br>');
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    if (d < 30) return `${d}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+  }
+
+  function getYouTubeId(url) {
+    if (!url) return null;
+    const m = url.match(/(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  function formatExif(exif) {
+    const parts = [];
+    if (exif.camera) parts.push(exif.camera);
+    if (exif.lens) parts.push(exif.lens);
+    if (exif.focalLength) parts.push(exif.focalLength);
+    if (exif.aperture) parts.push(`f/${exif.aperture}`);
+    if (exif.shutterSpeed) parts.push(`${exif.shutterSpeed}s`);
+    if (exif.iso) parts.push(`ISO ${exif.iso}`);
+    return parts.join(' · ');
+  }
+
+  function renderEmbeds(embed) {
+    if (!embed) return '';
+    let html = '';
+
+    // Multiple images (gallery)
+    if (embed.images?.length > 1) {
+      html += `<div class="grid grid-cols-2 gap-1 mt-2 rounded overflow-hidden">
+        ${embed.images.map(img => `<img src="${escapeHtml(img.fullsize || img.thumb)}" alt="${escapeHtml(img.alt || '')}" class="w-full object-cover aspect-square" loading="lazy" onerror="this.style.display='none'" />`).join('')}
+      </div>`;
+    }
+    // Single image
+    if (embed.images?.length === 1) {
+      html += `<div class="mt-2 bg-black flex justify-center rounded overflow-hidden"><img src="${escapeHtml(embed.images[0].fullsize || embed.images[0].thumb)}" alt="${escapeHtml(embed.images[0].alt || '')}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>`;
+    }
+    // Video (HLS)
+    if (embed.video?.playlist) {
+      html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
+        <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
+      </div>`;
+    }
+    // External link / YouTube
+    if (embed.external?.uri) {
+      const ytId = getYouTubeId(embed.external.uri);
+      if (ytId) {
+        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+      } else {
+        html += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-theme-input-border overflow-hidden hover:border-theme-card-hover transition">
+          ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
+          <div class="p-3">
+            <div class="text-sm font-medium text-theme-text line-clamp-1">${escapeHtml(embed.external.title || '')}</div>
+            ${embed.external.description ? `<div class="text-xs text-theme-faint mt-1 line-clamp-2">${escapeHtml(embed.external.description)}</div>` : ''}
+            <div class="text-xs text-theme-faint mt-1">${escapeHtml((() => { try { return new URL(embed.external.uri).hostname; } catch { return ''; } })())}</div>
           </div>
-          <p class="text-sm text-theme-text line-clamp-4">${escapeHtml(embed.quote.text)}</p>
-        </div>`;
+        </a>`;
       }
+    }
+    // Quote
+    if (embed.quote?.text) {
+      html += `<div class="mt-2 rounded border border-theme-input-border p-3 bg-theme-surface/50">
+        <div class="flex items-center gap-1.5 text-xs text-theme-muted mb-1">
+          ${embed.quote.avatar ? `<img src="${escapeHtml(embed.quote.avatar)}" class="h-4 w-4 rounded-full" />` : ''}
+          <span class="font-medium text-theme-text">${escapeHtml(embed.quote.author)}</span>
+          <span class="text-theme-faint">@${escapeHtml(embed.quote.handle)}</span>
+        </div>
+        <p class="text-sm text-theme-text line-clamp-4">${escapeHtml(embed.quote.text)}</p>
+      </div>`;
+    }
+    return html;
+  }
 
+  function renderPostCard(post) {
+    const embed = post.embedData || {};
+    const embedHtml = renderEmbeds(post.embedData);
+
+    // Primary image (non-embed)
+    const showPrimaryImage = !embed.images?.length && post.imageUrl;
+
+    if (post.type === 'bluesky') {
+      const liked = !!myLikes[post.uri];
+      const reposted = !!myReposts[post.uri];
       const repostLine = post.repostBy
         ? `<div class="text-xs text-theme-faint mb-2">🔁 Reposted by ${escapeHtml(post.repostBy.displayName)}</div>`
         : '';
 
       return `
-        <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden">
+        <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden" data-uri="${escapeHtml(post.uri)}" data-cid="${escapeHtml(post.cid)}">
           <div class="p-4">
             ${repostLine}
             <div class="flex items-center gap-3 mb-3">
-              ${post.author.avatar ? `<img src="${escapeHtml(post.author.avatar)}" class="h-10 w-10 rounded-full" />` : '<div class="h-10 w-10 rounded-full bg-theme-surface-hover"></div>'}
-              <div>
-                <a href="https://bsky.app/profile/${escapeHtml(post.author.handle)}" target="_blank" class="font-medium text-sm hover:underline">${escapeHtml(post.author.displayName)}</a>
+              ${post.author.avatar ? `<img src="${escapeHtml(post.author.avatar)}" class="h-10 w-10 rounded-full cursor-pointer bsky-avatar" data-handle="${escapeHtml(post.author.handle)}" />` : '<div class="h-10 w-10 rounded-full bg-theme-surface-hover"></div>'}
+              <div class="min-w-0 flex-1">
+                <button class="bsky-avatar font-medium text-sm hover:underline text-left" data-handle="${escapeHtml(post.author.handle)}">${escapeHtml(post.author.displayName)}</button>
                 <div class="text-xs text-theme-faint">@${escapeHtml(post.author.handle)}</div>
               </div>
-              <time class="text-xs text-theme-faint ml-auto">${new Date(post.pubDate).toLocaleDateString()}</time>
+              <time class="text-xs text-theme-faint shrink-0">${timeAgo(post.pubDate)}</time>
             </div>
             ${post.text ? `<p class="text-sm whitespace-pre-wrap mb-2">${formatText(post.text)}</p>` : ''}
+            ${showPrimaryImage ? `<div class="mt-2 bg-black flex justify-center rounded overflow-hidden"><img src="${escapeHtml(post.imageUrl)}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>` : ''}
             ${embedHtml}
-            <div class="mt-3 flex items-center gap-4 text-xs text-theme-faint">
-              <span>♡ ${post.likeCount}</span>
-              <span>🔁 ${post.repostCount}</span>
-              <span>💬 ${post.replyCount}</span>
-              <button class="share-btn hover:text-green-500 transition ml-auto" data-url="${escapeHtml(post.link)}" data-title="${escapeHtml(post.text?.slice(0, 100) || '')}">${L.shareButton}</button>
-              <a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-theme-text">↗ Open</a>
+            <div class="mt-3 flex items-center gap-1 text-xs text-theme-faint">
+              <button class="bsky-like-btn flex items-center gap-1 px-2 py-1 rounded hover:bg-theme-surface-hover transition ${liked ? 'text-red-400' : ''}" data-uri="${escapeHtml(post.uri)}" data-cid="${escapeHtml(post.cid)}">
+                ${liked ? '♥' : '♡'} <span class="like-count">${post.likeCount}</span>
+              </button>
+              <button class="bsky-repost-btn flex items-center gap-1 px-2 py-1 rounded hover:bg-theme-surface-hover transition ${reposted ? 'text-green-400' : ''}" data-uri="${escapeHtml(post.uri)}" data-cid="${escapeHtml(post.cid)}">
+                🔁 <span class="repost-count">${post.repostCount}</span>
+              </button>
+              <button class="bsky-reply-btn flex items-center gap-1 px-2 py-1 rounded hover:bg-theme-surface-hover transition" data-uri="${escapeHtml(post.uri)}">
+                💬 ${post.replyCount}
+              </button>
+              <div class="ml-auto flex items-center gap-1">
+                <button class="share-btn px-2 py-1 rounded hover:bg-theme-surface-hover transition" data-url="${escapeHtml(post.link)}" data-title="${escapeHtml(post.text?.slice(0, 100) || '')}">↗ Share</button>
+                <a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded hover:bg-theme-surface-hover hover:text-theme-text transition">↗ Open</a>
+              </div>
             </div>
           </div>
-        </article>
-      `;
-    }).join('');
-
-    if (append) {
-      feedContainer.insertAdjacentHTML('beforeend', html);
-    } else {
-      feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">${L.connectBluesky}</div>`;
+        </article>`;
     }
 
-    hasMore = !!bskyCursor;
-    isLoading = false;
-    scrollSentinel.classList.toggle('hidden', !hasMore);
-    attachShareListeners();
-    initHlsVideos();
+    // Pirate Social / RSS post
+    const isRss = post.type === 'rss';
+    const authorHtml = isRss
+      ? `<div class="flex items-center gap-2">
+          ${post.author.avatar ? `<img src="${escapeHtml(post.author.avatar)}" class="h-8 w-8 rounded" onerror="this.style.display='none'" />` : '<div class="h-8 w-8 rounded bg-theme-surface-hover flex items-center justify-center text-theme-muted text-xs">RSS</div>'}
+          <div>
+            <span class="font-medium text-sm">${escapeHtml(post.author.displayName)}</span>
+            <span class="ml-2 text-xs px-1.5 py-0.5 rounded bg-theme-input-bg text-theme-muted">RSS</span>
+            <time class="block text-xs text-theme-faint">${timeAgo(post.pubDate)}</time>
+          </div>
+        </div>`
+      : `<div class="flex items-center gap-3">
+          ${post.author.avatar ? `<img src="${escapeHtml(post.author.avatar)}" class="h-8 w-8 rounded-full" />` : ''}
+          <div>
+            <a href="${hubUrl}/../${escapeHtml(post.author.handle)}" class="font-medium text-sm hover:underline">${escapeHtml(post.author.displayName)}</a>
+            <time class="block text-xs text-theme-faint">${timeAgo(post.pubDate)}</time>
+          </div>
+        </div>`;
+
+    const actionsHtml = isRss
+      ? `<a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="hover:text-theme-text">${L.readButton || '↗ Read'}</a>
+         <button class="share-btn hover:text-green-500 transition" data-url="${escapeHtml(post.link)}" data-title="${escapeHtml(post.title || '')}">↗ Share</button>`
+      : `<button class="like-btn hover:text-red-400 transition ${post.hasLiked ? 'text-red-400' : ''}" data-post-id="${post.id}">
+            ${post.hasLiked ? '♥' : '♡'} ${post.likeCount}
+          </button>
+          <button class="comment-btn hover:text-theme-primary transition" data-post-id="${post.id}">
+            💬 ${post.commentCount}
+          </button>
+          <button class="share-btn hover:text-green-500 transition" data-url="${escapeHtml(post.link)}" data-title="${escapeHtml(post.title || '')}">↗ Share</button>
+          ${post.link ? `<a href="${escapeHtml(post.link)}" target="_blank" class="hover:text-theme-text ml-auto">↗ View</a>` : ''}`;
+
+    return `
+      <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden">
+        ${showPrimaryImage ? `<div class="bg-black flex justify-center"><img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>` : ''}
+        <div class="p-4">
+          <div class="mb-3">${authorHtml}</div>
+          ${post.title && !embed.external?.uri ? `<h3 class="font-semibold"><a href="${escapeHtml(post.link)}" target="_blank" class="hover:underline">${formatText(post.title)}</a></h3>` : ''}
+          ${post.text && post.text !== post.title && !embed.external?.uri ? `<p class="mt-1 text-sm text-theme-muted">${formatText(post.text)}</p>` : ''}
+          ${embedHtml}
+          ${post.exifData ? `<div class="mt-2 text-xs text-theme-faint">${formatExif(post.exifData)}</div>` : ''}
+          <div class="mt-3 flex items-center gap-4 text-sm text-theme-muted">${actionsHtml}</div>
+        </div>
+      </article>`;
   }
 
-  function renderPeople(data, append) {
-    const html = (data.users || []).map(user => `
+  // ============================================================
+  // RENDERING — PEOPLE / PROFILES
+  // ============================================================
+  function renderBskyUserCard(actor) {
+    return `
+      <div class="flex items-center gap-4 rounded-lg border border-theme-card-border bg-theme-card p-4">
+        ${actor.avatar ? `<img src="${escapeHtml(actor.avatar)}" class="h-12 w-12 rounded-full cursor-pointer bsky-avatar" data-handle="${escapeHtml(actor.handle)}" />` : '<div class="h-12 w-12 rounded-full bg-theme-surface-hover"></div>'}
+        <div class="flex-1 min-w-0">
+          <button class="bsky-avatar font-medium hover:underline text-left" data-handle="${escapeHtml(actor.handle)}">${escapeHtml(actor.displayName || actor.handle)}</button>
+          <p class="text-sm text-theme-muted">@${escapeHtml(actor.handle)}</p>
+          ${actor.description ? `<p class="text-sm text-theme-faint mt-1 line-clamp-2">${escapeHtml(actor.description)}</p>` : ''}
+        </div>
+        <div class="text-right text-xs text-theme-faint shrink-0">
+          <div>${actor.followersCount ?? 0} followers</div>
+          <div>${actor.postsCount ?? 0} posts</div>
+        </div>
+      </div>`;
+  }
+
+  function renderPirateUserCard(user) {
+    return `
       <div class="flex items-center gap-4 rounded-lg border border-theme-card-border bg-theme-card p-4">
         ${user.avatarUrl ? `<img src="${escapeHtml(user.avatarUrl)}" class="h-12 w-12 rounded-full" />` : '<div class="h-12 w-12 rounded-full bg-theme-surface-hover"></div>'}
         <div class="flex-1 min-w-0">
@@ -480,23 +641,513 @@ const sl = labels.social;
           <div>${user._count?.followers || 0} followers</div>
         </div>
         ${token ? `<button class="follow-btn rounded bg-theme-surface-hover px-3 py-1 text-xs hover:bg-theme-card-hover transition" data-user-id="${user.id}">Follow</button>` : ''}
-      </div>
-    `).join('');
+      </div>`;
+  }
 
-    if (append) {
-      feedContainer.insertAdjacentHTML('beforeend', html);
-    } else {
-      feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">${L.noUsers}</div>`;
-    }
+  function renderFeedCard(feed) {
+    return `
+      <div class="flex items-center gap-4 rounded-lg border border-theme-card-border bg-theme-card p-4">
+        ${feed.avatar ? `<img src="${escapeHtml(feed.avatar)}" class="h-12 w-12 rounded-lg" />` : '<div class="h-12 w-12 rounded-lg bg-theme-surface-hover flex items-center justify-center text-theme-muted">📡</div>'}
+        <div class="flex-1 min-w-0">
+          <span class="font-medium text-sm">${escapeHtml(feed.displayName || 'Untitled Feed')}</span>
+          ${feed.description ? `<p class="text-sm text-theme-faint mt-1 line-clamp-2">${escapeHtml(feed.description)}</p>` : ''}
+          <p class="text-xs text-theme-faint mt-1">by @${escapeHtml(feed.creator?.handle || '')}</p>
+        </div>
+        <div class="text-right text-xs text-theme-faint shrink-0">
+          <div>❤ ${feed.likeCount || 0}</div>
+        </div>
+      </div>`;
+  }
 
-    hasMore = !!data.hasMore;
-    attachInteractionListeners();
-    attachShareListeners();
+  // ============================================================
+  // SLIDE-OVER PANEL (Thread / Profile)
+  // ============================================================
+  const slidePanel = document.getElementById('slide-panel');
+  const slideContent = document.getElementById('slide-content');
+  const slideBody = document.getElementById('slide-body');
+  const slideTitle = document.getElementById('slide-title');
+
+  function openSlidePanel(title, html) {
+    slideTitle.textContent = title;
+    slideBody.innerHTML = html;
+    slidePanel.classList.remove('hidden');
+    requestAnimationFrame(() => slideContent.style.transform = 'translateX(0)');
     initHlsVideos();
   }
 
-  function attachInteractionListeners() {
-    document.querySelectorAll('.like-btn').forEach(btn => {
+  function closeSlidePanel() {
+    slideContent.style.transform = 'translateX(100%)';
+    setTimeout(() => slidePanel.classList.add('hidden'), 300);
+  }
+
+  document.getElementById('slide-backdrop').addEventListener('click', closeSlidePanel);
+  document.getElementById('slide-close').addEventListener('click', closeSlidePanel);
+
+  async function openProfile(handle) {
+    openSlidePanel(`@${handle}`, `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`);
+    try {
+      const profile = await fetchBskyProfile(handle);
+      const feedData = await fetchBskyAuthorFeed(handle);
+      const posts = (feedData.feed || []).map(item => normalizeBskyPost(item));
+
+      let html = `
+        <div class="text-center pb-4 border-b border-theme-border">
+          ${profile.banner ? `<div class="-mx-4 -mt-4 mb-4"><img src="${escapeHtml(profile.banner)}" class="w-full h-32 object-cover" /></div>` : ''}
+          ${profile.avatar ? `<img src="${escapeHtml(profile.avatar)}" class="h-20 w-20 rounded-full mx-auto border-4 border-theme-bg ${profile.banner ? '-mt-14' : ''}" />` : ''}
+          <h3 class="font-bold text-lg mt-2">${escapeHtml(profile.displayName || profile.handle)}</h3>
+          <p class="text-sm text-theme-faint">@${escapeHtml(profile.handle)}</p>
+          ${profile.description ? `<p class="text-sm text-theme-muted mt-2 text-left">${formatText(profile.description)}</p>` : ''}
+          <div class="flex justify-center gap-6 mt-3 text-sm">
+            <span><strong>${profile.followersCount || 0}</strong> <span class="text-theme-faint">followers</span></span>
+            <span><strong>${profile.followsCount || 0}</strong> <span class="text-theme-faint">following</span></span>
+            <span><strong>${profile.postsCount || 0}</strong> <span class="text-theme-faint">posts</span></span>
+          </div>
+        </div>
+        <div class="space-y-4 mt-4">${posts.map(p => renderPostCard(p)).join('')}</div>`;
+      slideBody.innerHTML = html;
+      attachAllListeners();
+      initHlsVideos();
+    } catch {
+      slideBody.innerHTML = `<div class="text-center py-8 text-red-400">Failed to load profile</div>`;
+    }
+  }
+
+  async function openThread(uri) {
+    openSlidePanel('Thread', `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`);
+    try {
+      const data = await fetchBskyThread(uri);
+      const thread = data.thread;
+      if (!thread?.post) { slideBody.innerHTML = '<div class="text-center py-8 text-theme-faint">Thread not found</div>'; return; }
+
+      function renderThreadNode(node, depth = 0) {
+        if (!node?.post) return '';
+        const post = normalizeBskyPost({ post: node.post });
+        const indent = depth > 0 ? `style="margin-left:${Math.min(depth, 4) * 1}rem;border-left:2px solid var(--ps-card-border);padding-left:0.75rem"` : '';
+        let html = `<div ${indent}>${renderPostCard(post)}</div>`;
+        if (node.replies?.length) {
+          html += node.replies.map(r => renderThreadNode(r, depth + 1)).join('');
+        }
+        return html;
+      }
+
+      // Render parent chain if exists
+      let parentHtml = '';
+      if (thread.parent) {
+        const parents = [];
+        let p = thread.parent;
+        while (p?.post) { parents.unshift(p); p = p.parent; }
+        parentHtml = parents.map((n, i) => renderThreadNode(n, 0)).join('');
+      }
+
+      const mainHtml = renderPostCard(normalizeBskyPost({ post: thread.post }));
+      const repliesHtml = (thread.replies || []).map(r => renderThreadNode(r, 1)).join('');
+
+      slideBody.innerHTML = `
+        ${parentHtml ? `<div class="space-y-3 opacity-70 mb-4">${parentHtml}</div><div class="border-t border-theme-border pt-4"></div>` : ''}
+        <div class="mb-4">${mainHtml}</div>
+        ${repliesHtml ? `<div class="space-y-3">${repliesHtml}</div>` : '<div class="text-center py-4 text-theme-faint">No replies yet</div>'}`;
+      attachAllListeners();
+      initHlsVideos();
+    } catch {
+      slideBody.innerHTML = `<div class="text-center py-8 text-red-400">Failed to load thread</div>`;
+    }
+  }
+
+  // ============================================================
+  // MAIN LOAD LOGIC
+  // ============================================================
+  const scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !isLoading && hasMore) loadMore();
+  }, { rootMargin: '400px' });
+  scrollObserver.observe(scrollSentinel);
+
+  function loadMore() {
+    if (currentTab === 'feed') { piratePage++; loadFeedTab(true); }
+    else if (currentTab === 'discover' && currentDiscoverSub === 'trending') { loadDiscoverTrending(true); }
+    else if (currentTab === 'search') { loadSearchResults(true); }
+  }
+
+  // --- Tab switching ---
+  document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('.active-tab')?.classList.remove('active-tab', 'bg-theme-surface-hover');
+      btn.classList.add('active-tab', 'bg-theme-surface-hover');
+      currentTab = btn.id.replace('tab-', '');
+      resetPagination();
+      updateUI();
+      loadCurrentTab();
+    });
+  });
+
+  function resetPagination() {
+    piratePage = 1;
+    bskyCursor = null;
+    hasMore = true;
+  }
+
+  function updateUI() {
+    filterBar.classList.toggle('hidden', currentTab !== 'feed');
+    discoverPills.classList.toggle('hidden', currentTab !== 'discover');
+    searchBar.classList.toggle('hidden', currentTab !== 'search');
+  }
+
+  function loadCurrentTab() {
+    if (currentTab === 'feed') loadFeedTab();
+    else if (currentTab === 'discover') loadDiscoverTab();
+    else if (currentTab === 'squads') renderSquadsView();
+    else if (currentTab === 'search') { feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">Search for Bluesky posts, users, or feeds above</div>`; hasMore = false; scrollSentinel.classList.add('hidden'); }
+  }
+
+  // --- Filter pills ---
+  document.querySelectorAll('.filter-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('.filter-pill.active-pill')?.classList.remove('active-pill', 'bg-theme-surface-hover');
+      btn.classList.add('active-pill', 'bg-theme-surface-hover');
+      currentFilter = btn.dataset.filter;
+      resetPagination();
+      loadFeedTab();
+    });
+  });
+
+  // --- Discover pills ---
+  document.querySelectorAll('.discover-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('.discover-pill.active-pill')?.classList.remove('active-pill', 'bg-theme-surface-hover');
+      btn.classList.add('active-pill', 'bg-theme-surface-hover');
+      currentDiscoverSub = btn.dataset.sub;
+      resetPagination();
+      loadDiscoverTab();
+    });
+  });
+
+  // --- Search ---
+  document.querySelectorAll('.search-type-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('.search-type-pill.active-pill')?.classList.remove('active-pill', 'bg-theme-surface-hover');
+      btn.classList.add('active-pill', 'bg-theme-surface-hover');
+      currentSearchType = btn.dataset.type;
+      resetPagination();
+      const q = document.getElementById('search-input').value.trim();
+      if (q) loadSearchResults();
+    });
+  });
+
+  document.getElementById('search-btn').addEventListener('click', () => {
+    resetPagination();
+    loadSearchResults();
+  });
+
+  document.getElementById('search-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { resetPagination(); loadSearchResults(); }
+  });
+
+  document.getElementById('social-login')?.addEventListener('click', () => {
+    window.location.href = `${hubUrl}/api/auth/github`;
+  });
+
+  // ============================================================
+  // FEED TAB — Bluesky timeline + Pirate RSS merged
+  // ============================================================
+  async function loadFeedTab(append = false) {
+    if (isLoading) return;
+    isLoading = true;
+    if (!append) { feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`; }
+    scrollSentinel.classList.toggle('hidden', !append);
+
+    try {
+      const session = await ensureBskySession();
+      let allPosts = [];
+
+      // Fetch Bluesky timeline (direct AT Protocol)
+      if (session?.accessJwt) {
+        try {
+          const bskyData = await fetchBskyTimeline(bskyCursor);
+          bskyCursor = bskyData.cursor || null;
+          const bskyPosts = (bskyData.feed || []).map(item => normalizeBskyPost(item));
+          allPosts.push(...bskyPosts);
+        } catch (err) {
+          console.error('[PS] Bluesky timeline error:', err.message);
+        }
+      }
+
+      // Fetch Pirate Social timeline (RSS + pirate posts) — only on first load or if filter is 'pirate'
+      if (token && (!append || currentFilter === 'pirate' || currentFilter === 'all')) {
+        try {
+          const headers = { Authorization: `Bearer ${token}` };
+          const pirateRes = await fetchTimeout(`${hubUrl}/api/timeline?page=${piratePage}`, { headers });
+          const pirateData = await pirateRes.json();
+          const piratePosts = (pirateData.posts || []).map(p => normalizePiratePost(p));
+          allPosts.push(...piratePosts);
+          if (!pirateData.hasMore && !bskyCursor) hasMore = false;
+        } catch (err) {
+          console.error('[PS] Pirate timeline error:', err.message);
+        }
+      }
+
+      // If no Bluesky session and no token, show discover
+      if (!session?.accessJwt && !token) {
+        try {
+          const pirateRes = await fetchTimeout(`${hubUrl}/api/timeline/discover?page=${piratePage}`);
+          const pirateData = await pirateRes.json();
+          allPosts = (pirateData.posts || []).map(p => normalizePiratePost(p));
+          hasMore = !!pirateData.hasMore;
+        } catch {}
+      }
+
+      // Sort by date
+      allPosts.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+
+      // Apply filter
+      const filtered = allPosts.filter(p => matchesFilter(p, currentFilter));
+
+      hasMore = !!bskyCursor || hasMore;
+
+      const html = filtered.map(p => renderPostCard(p)).join('');
+      if (append) {
+        feedContainer.insertAdjacentHTML('beforeend', html);
+      } else {
+        if (!filtered.length && !session?.accessJwt && !token) {
+          feedContainer.innerHTML = `<div class="text-center text-theme-faint py-12"><p>${L.signInPrompt || 'Sign in to see your feed'}</p><button id="social-login" class="mt-4 rounded bg-theme-primary text-white px-4 py-2 text-sm font-medium hover:bg-theme-primary-hover transition">${L.signInButton || 'Sign in with GitHub'}</button></div>`;
+          document.getElementById('social-login')?.addEventListener('click', () => { window.location.href = `${hubUrl}/api/auth/github`; });
+        } else if (!filtered.length) {
+          feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${session?.accessJwt ? (L.noPosts || 'No posts yet') : (L.connectBluesky || 'Connect Bluesky in Settings to see your feed')}</div>`;
+        } else {
+          feedContainer.innerHTML = html;
+        }
+      }
+      attachAllListeners();
+      initHlsVideos();
+    } catch (err) {
+      if (!append) feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad || 'Failed to load feed'}</div>`;
+      hasMore = false;
+    } finally {
+      isLoading = false;
+      scrollSentinel.classList.toggle('hidden', !hasMore);
+    }
+  }
+
+  // ============================================================
+  // DISCOVER TAB
+  // ============================================================
+  async function loadDiscoverTab() {
+    if (currentDiscoverSub === 'trending') loadDiscoverTrending();
+    else if (currentDiscoverSub === 'people') loadDiscoverPeople();
+    else if (currentDiscoverSub === 'feeds') loadDiscoverFeeds();
+  }
+
+  async function loadDiscoverTrending(append = false) {
+    if (isLoading) return;
+    isLoading = true;
+    if (!append) feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`;
+    scrollSentinel.classList.toggle('hidden', !append);
+
+    try {
+      const session = await ensureBskySession();
+      let allPosts = [];
+
+      // Trending topics banner
+      let trendingHtml = '';
+      if (!append) {
+        try {
+          const trending = await fetchTrendingTopics();
+          if (trending.topics?.length || trending.suggested?.length) {
+            const topics = [...(trending.topics || []), ...(trending.suggested || [])].slice(0, 12);
+            trendingHtml = `<div class="flex gap-2 flex-wrap mb-6">${topics.map(t =>
+              `<button class="trending-topic rounded-full bg-theme-input-bg border border-theme-input-border px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-topic="${escapeHtml(t.topic || t.tag || t)}">#${escapeHtml(t.topic || t.tag || t)}</button>`
+            ).join('')}</div>`;
+          }
+        } catch {}
+      }
+
+      // Bluesky discover feed
+      if (session?.accessJwt) {
+        try {
+          const data = await fetchBskyDiscover(bskyCursor);
+          bskyCursor = data.cursor || null;
+          allPosts = (data.feed || []).map(item => normalizeBskyPost(item));
+        } catch {}
+      }
+
+      // Also pull Pirate Social discover
+      try {
+        const pirateRes = await fetchTimeout(`${hubUrl}/api/timeline/discover?page=${piratePage}`);
+        const pirateData = await pirateRes.json();
+        allPosts.push(...(pirateData.posts || []).map(p => normalizePiratePost(p)));
+      } catch {}
+
+      allPosts.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+      hasMore = !!bskyCursor;
+
+      const html = allPosts.map(p => renderPostCard(p)).join('');
+      if (append) {
+        feedContainer.insertAdjacentHTML('beforeend', html);
+      } else {
+        feedContainer.innerHTML = trendingHtml + (html || `<div class="text-center py-8 text-theme-faint">${L.noPosts || 'No posts'}</div>`);
+      }
+      attachAllListeners();
+      initHlsVideos();
+
+      // Attach trending topic click handlers
+      document.querySelectorAll('.trending-topic').forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Switch to search tab with this topic
+          document.querySelector('.active-tab')?.classList.remove('active-tab', 'bg-theme-surface-hover');
+          document.getElementById('tab-search').classList.add('active-tab', 'bg-theme-surface-hover');
+          currentTab = 'search';
+          updateUI();
+          document.getElementById('search-input').value = btn.dataset.topic;
+          resetPagination();
+          loadSearchResults();
+        });
+      });
+    } catch {
+      if (!append) feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad || 'Failed to load'}</div>`;
+    } finally {
+      isLoading = false;
+      scrollSentinel.classList.toggle('hidden', !hasMore);
+    }
+  }
+
+  async function loadDiscoverPeople() {
+    feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`;
+    hasMore = false;
+    scrollSentinel.classList.add('hidden');
+
+    try {
+      // Fetch Pirate Social directory
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetchTimeout(`${hubUrl}/api/directory?page=1`, { headers });
+      const data = await res.json();
+      const html = (data.users || []).map(u => renderPirateUserCard(u)).join('');
+      feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">${L.noUsers || 'No users yet'}</div>`;
+      attachAllListeners();
+    } catch {
+      feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad || 'Failed to load'}</div>`;
+    } finally { isLoading = false; }
+  }
+
+  async function loadDiscoverFeeds() {
+    feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`;
+    hasMore = false;
+    scrollSentinel.classList.add('hidden');
+
+    try {
+      const data = await searchBskyFeeds('');
+      const feeds = data.feeds || [];
+      const html = feeds.map(f => renderFeedCard(f)).join('');
+      feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">No feeds found</div>`;
+    } catch {
+      feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad || 'Failed to load'}</div>`;
+    } finally { isLoading = false; }
+  }
+
+  // ============================================================
+  // SEARCH TAB
+  // ============================================================
+  async function loadSearchResults(append = false) {
+    const query = document.getElementById('search-input').value.trim();
+    if (!query) return;
+    if (isLoading) return;
+    isLoading = true;
+    if (!append) feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">${L.loading || 'Loading...'}</div>`;
+
+    try {
+      if (currentSearchType === 'posts') {
+        const data = await searchBskyPosts(query, bskyCursor);
+        bskyCursor = data.cursor || null;
+        hasMore = !!bskyCursor;
+        const posts = (data.posts || []).map(p => normalizeBskyPost({ post: p }));
+        const html = posts.map(p => renderPostCard(p)).join('');
+        if (append) feedContainer.insertAdjacentHTML('beforeend', html);
+        else feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">No results for "${escapeHtml(query)}"</div>`;
+      } else if (currentSearchType === 'users') {
+        const data = await searchBskyActors(query, bskyCursor);
+        bskyCursor = data.cursor || null;
+        hasMore = !!bskyCursor;
+        const html = (data.actors || []).map(a => renderBskyUserCard(a)).join('');
+        if (append) feedContainer.insertAdjacentHTML('beforeend', html);
+        else feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">No users found for "${escapeHtml(query)}"</div>`;
+      } else if (currentSearchType === 'feeds') {
+        const data = await searchBskyFeeds(query, bskyCursor);
+        bskyCursor = data.cursor || null;
+        hasMore = !!bskyCursor;
+        const html = (data.feeds || []).map(f => renderFeedCard(f)).join('');
+        if (append) feedContainer.insertAdjacentHTML('beforeend', html);
+        else feedContainer.innerHTML = html || `<div class="text-center py-8 text-theme-faint">No feeds found for "${escapeHtml(query)}"</div>`;
+      }
+      attachAllListeners();
+      initHlsVideos();
+    } catch {
+      if (!append) feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">Search failed</div>`;
+    } finally {
+      isLoading = false;
+      scrollSentinel.classList.toggle('hidden', !hasMore);
+    }
+  }
+
+  // ============================================================
+  // INTERACTIONS
+  // ============================================================
+  function attachAllListeners() {
+    // Bluesky likes
+    document.querySelectorAll('.bsky-like-btn:not([data-bound])').forEach(btn => {
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', async () => {
+        if (!bskySession?.accessJwt) return;
+        const uri = btn.dataset.uri;
+        const cid = btn.dataset.cid;
+        const countEl = btn.querySelector('.like-count');
+        const count = parseInt(countEl.textContent) || 0;
+        if (myLikes[uri]) {
+          // Unlike
+          btn.classList.remove('text-red-400');
+          btn.innerHTML = `♡ <span class="like-count">${Math.max(0, count - 1)}</span>`;
+          try { await unlikeBskyPost(uri); } catch { btn.classList.add('text-red-400'); btn.innerHTML = `♥ <span class="like-count">${count}</span>`; }
+        } else {
+          // Like
+          btn.classList.add('text-red-400');
+          btn.innerHTML = `♥ <span class="like-count">${count + 1}</span>`;
+          try { await likeBskyPost(uri, cid); } catch { btn.classList.remove('text-red-400'); btn.innerHTML = `♡ <span class="like-count">${count}</span>`; }
+        }
+      });
+    });
+
+    // Bluesky reposts
+    document.querySelectorAll('.bsky-repost-btn:not([data-bound])').forEach(btn => {
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', async () => {
+        if (!bskySession?.accessJwt) return;
+        const uri = btn.dataset.uri;
+        const cid = btn.dataset.cid;
+        const countEl = btn.querySelector('.repost-count');
+        const count = parseInt(countEl.textContent) || 0;
+        if (myReposts[uri]) {
+          btn.classList.remove('text-green-400');
+          btn.innerHTML = `🔁 <span class="repost-count">${Math.max(0, count - 1)}</span>`;
+          try { await unrepostBskyPost(uri); } catch { btn.classList.add('text-green-400'); btn.innerHTML = `🔁 <span class="repost-count">${count}</span>`; }
+        } else {
+          btn.classList.add('text-green-400');
+          btn.innerHTML = `🔁 <span class="repost-count">${count + 1}</span>`;
+          try { await repostBskyPost(uri, cid); } catch { btn.classList.remove('text-green-400'); btn.innerHTML = `🔁 <span class="repost-count">${count}</span>`; }
+        }
+      });
+    });
+
+    // Reply button → open thread
+    document.querySelectorAll('.bsky-reply-btn:not([data-bound])').forEach(btn => {
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', () => openThread(btn.dataset.uri));
+    });
+
+    // Avatar click → open profile
+    document.querySelectorAll('.bsky-avatar:not([data-bound])').forEach(el => {
+      el.dataset.bound = '1';
+      el.addEventListener('click', (e) => { e.preventDefault(); openProfile(el.dataset.handle); });
+    });
+
+    // Pirate Social likes
+    document.querySelectorAll('.like-btn:not([data-bound])').forEach(btn => {
+      btn.dataset.bound = '1';
       btn.addEventListener('click', async () => {
         if (!token) return alert('Sign in to like posts');
         const postId = btn.dataset.postId;
@@ -512,7 +1163,9 @@ const sl = labels.social;
       });
     });
 
-    document.querySelectorAll('.follow-btn').forEach(btn => {
+    // Pirate Social follows
+    document.querySelectorAll('.follow-btn:not([data-bound])').forEach(btn => {
+      btn.dataset.bound = '1';
       btn.addEventListener('click', async () => {
         if (!token) return;
         const userId = btn.dataset.userId;
@@ -524,42 +1177,20 @@ const sl = labels.social;
         btn.textContent = data.following ? 'Following' : 'Follow';
       });
     });
+
+    // Share buttons
+    document.querySelectorAll('.share-btn:not([data-bound])').forEach(btn => {
+      btn.dataset.bound = '1';
+      btn.addEventListener('click', () => openShareModal(btn.dataset.url, btn.dataset.title));
+    });
   }
 
-  function formatExif(exif) {
-    const parts = [];
-    if (exif.camera) parts.push(exif.camera);
-    if (exif.lens) parts.push(exif.lens);
-    if (exif.focalLength) parts.push(exif.focalLength);
-    if (exif.aperture) parts.push(`f/${exif.aperture}`);
-    if (exif.shutterSpeed) parts.push(`${exif.shutterSpeed}s`);
-    if (exif.iso) parts.push(`ISO ${exif.iso}`);
-    return parts.join(' · ');
-  }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  function formatText(str) {
-    if (!str) return '';
-    // Decode XML newline entities, strip Bluesky embed placeholders
-    let text = str
-      .replace(/&#xA;/gi, '\n')
-      .replace(/\[contains quote post or other embedded content\]/gi, '')
-      .trim();
-    return escapeHtml(text).replace(/\n/g, '<br>');
-  }
-
-
-
-  // --- Share modal ---
+  // ============================================================
+  // SHARE MODAL
+  // ============================================================
   const shareOverlay = document.createElement('div');
   shareOverlay.id = 'share-modal-overlay';
-  shareOverlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;justify-content:center;align-items:center';
+  shareOverlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;justify-content:center;align-items:center';
   shareOverlay.innerHTML = `
     <div id="share-modal" style="background:var(--ps-card-bg);border:1px solid var(--ps-card-border);border-radius:.75rem;padding:1.5rem;width:20rem;max-width:90vw">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
@@ -569,7 +1200,6 @@ const sl = labels.social;
       <div id="share-links" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem"></div>
     </div>`;
   document.body.appendChild(shareOverlay);
-
   shareOverlay.addEventListener('click', (e) => { if (e.target === shareOverlay) shareOverlay.style.display = 'none'; });
   document.getElementById('share-close').addEventListener('click', () => shareOverlay.style.display = 'none');
 
@@ -586,30 +1216,17 @@ const sl = labels.social;
     const linksHtml = links.map(l =>
       `<a href="${l.href}" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:var(--ps-input-bg);color:var(--ps-text);font-size:.875rem;text-decoration:none;transition:background .15s" onmouseover="this.style.background='var(--ps-surface-hover)'" onmouseout="this.style.background='var(--ps-input-bg)'">${l.label}</a>`
     ).join('');
-    const copyBtn = `<button id="share-copy" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:var(--ps-input-bg);color:var(--ps-text);font-size:.875rem;border:none;cursor:pointer;transition:background .15s;grid-column:span 2" onmouseover="this.style.background='var(--ps-surface-hover)'" onmouseout="this.style.background='var(--ps-input-bg)'">📋 Copy Link</button>`;
+    const copyBtn = `<button id="share-copy" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:.5rem;background:var(--ps-input-bg);color:var(--ps-text);font-size:.875rem;border:none;cursor:pointer;transition:background .15s;grid-column:span 2">📋 Copy Link</button>`;
     document.getElementById('share-links').innerHTML = linksHtml + copyBtn;
     document.getElementById('share-copy').addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(url);
-        document.getElementById('share-copy').textContent = '✓ Copied!';
-        setTimeout(() => document.getElementById('share-copy').textContent = '📋 Copy Link', 2000);
-      } catch { /* fallback */ }
+      try { await navigator.clipboard.writeText(url); document.getElementById('share-copy').textContent = '✓ Copied!'; setTimeout(() => document.getElementById('share-copy').textContent = '📋 Copy Link', 2000); } catch {}
     });
     shareOverlay.style.display = 'flex';
   }
 
-  function attachShareListeners() {
-    document.querySelectorAll('.share-btn').forEach(btn => {
-      btn.addEventListener('click', () => openShareModal(btn.dataset.url, btn.dataset.title));
-    });
-  }
-
-  function getYouTubeId(url) {
-    if (!url) return null;
-    const m = url.match(/(?:(?:www\.|m\.|music\.)?youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/);
-    return m ? m[1] : null;
-  }
-
+  // ============================================================
+  // HLS VIDEO INIT
+  // ============================================================
   function initHlsVideos() {
     document.querySelectorAll('video[data-hls]').forEach(video => {
       if (video._hlsInit) return;
@@ -625,112 +1242,32 @@ const sl = labels.social;
     });
   }
 
-  // === CLIENT-SIDE BLUESKY HELPERS (using public API — no hub proxy needed) ===
-
-  function normalizeBskyPostClient(item) {
-    const post = item.post;
-    const reason = item.reason;
-    const embed = post.embed;
-    let embedData = {};
-    let imageUrl = null;
-
-    if (embed?.$type === 'app.bsky.embed.images#view') {
-      embedData.images = embed.images.map(img => ({ thumb: img.thumb, fullsize: img.fullsize, alt: img.alt || '' }));
-      if (embed.images[0]) imageUrl = embed.images[0].fullsize || embed.images[0].thumb;
-    }
-    if (embed?.$type === 'app.bsky.embed.video#view') {
-      embedData.video = { playlist: embed.playlist, thumb: embed.thumbnail, alt: embed.alt || '' };
-    }
-    if (embed?.$type === 'app.bsky.embed.external#view') {
-      embedData.external = { uri: embed.external.uri, title: embed.external.title, description: embed.external.description, thumb: embed.external.thumb };
-    }
-    if (embed?.$type === 'app.bsky.embed.recordWithMedia#view') {
-      const media = embed.media;
-      if (media?.$type === 'app.bsky.embed.images#view') {
-        embedData.images = media.images.map(img => ({ thumb: img.thumb, fullsize: img.fullsize, alt: img.alt || '' }));
-        if (media.images[0]) imageUrl = media.images[0].fullsize || media.images[0].thumb;
-      }
-      if (media?.$type === 'app.bsky.embed.video#view') {
-        embedData.video = { playlist: media.playlist, thumb: media.thumbnail, alt: media.alt || '' };
-      }
-      const rec = embed.record?.record;
-      if (rec?.value?.text) {
-        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
-      }
-    }
-    if (embed?.$type === 'app.bsky.embed.record#view') {
-      const rec = embed.record;
-      if (rec?.value?.text) {
-        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
-      }
-    }
-
-    return {
-      uri: post.uri, cid: post.cid,
-      author: { handle: post.author.handle, displayName: post.author.displayName || post.author.handle, avatar: post.author.avatar || '', did: post.author.did },
-      text: post.record?.text || '',
-      pubDate: post.indexedAt,
-      imageUrl,
-      embedData: Object.keys(embedData).length ? embedData : null,
-      likeCount: post.likeCount || 0,
-      repostCount: post.repostCount || 0,
-      replyCount: post.replyCount || 0,
-      repostBy: reason?.$type === 'app.bsky.feed.defs#reasonRepost'
-        ? { handle: reason.by.handle, displayName: reason.by.displayName || reason.by.handle }
-        : null,
-      link: `https://bsky.app/profile/${post.author.handle}/post/${post.uri.split('/').pop()}`,
-    };
-  }
-
-  async function fetchAuthorFeedDirect(handle, limit = 10) {
-    const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=${limit}&filter=posts_and_author_threads`;
-    const res = await fetchWithTimeout(url, {}, 8000);
-    if (!res.ok) throw new Error(`API error ${res.status}`);
-    const data = await res.json();
-    return (data.feed || []).map(item => normalizeBskyPostClient(item));
-  }
-
-  async function fetchSquadFeedDirect(members) {
-    const results = await Promise.allSettled(
-      members.map(m => fetchAuthorFeedDirect(m.did || m.handle, 5))
-    );
-    return results
-      .filter(r => r.status === 'fulfilled')
-      .flatMap(r => r.value)
-      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  }
-
-  // === SQUADS ===
-  let myAvatar = null;
-  let myHandle = null;
+  // ============================================================
+  // SQUADS (kept from original)
+  // ============================================================
+  let allSquads = [];
   let squadsInitialized = false;
 
   async function initSquadsProfile() {
     if (squadsInitialized) return;
     squadsInitialized = true;
     try {
-      // Use cached Bluesky session (already fetched by ensureBskySession)
       const session = await ensureBskySession();
       myHandle = session?.handle || null;
+      myDid = session?.did || null;
       if (myHandle) {
-        const profileRes = await fetchWithTimeout(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(myHandle)}`, {}, 8000);
-        if (profileRes.ok) {
-          const profile = await profileRes.json();
-          myAvatar = profile.avatar || null;
-        }
+        const profileRes = await fetchTimeout(`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(myHandle)}`, {}, 8000);
+        if (profileRes.ok) { const profile = await profileRes.json(); myAvatar = profile.avatar || null; }
       }
-      // Update center avatars if already rendered
       document.querySelectorAll('.my-center-avatar').forEach(el => {
         if (myAvatar) el.innerHTML = `<img src="${escapeHtml(myAvatar)}" alt="You" class="w-full h-full object-cover" />`;
       });
     } catch {}
   }
 
-  let allSquads = [];
-
   async function renderSquadsView() {
+    hasMore = false;
     scrollSentinel.classList.add('hidden');
-    // Fire profile fetch in background — don't block rendering
     initSquadsProfile();
 
     feedContainer.innerHTML = `
@@ -744,9 +1281,7 @@ const sl = labels.social;
         <form id="create-squad-form" class="hidden flex gap-2 mb-4">
           <input type="text" id="squad-name-input" placeholder="Squad name (e.g. Photo Friends)" required
             class="flex-1 rounded bg-theme-input-bg border border-theme-input-border px-3 py-2 text-sm focus:outline-none focus:border-theme-primary" />
-          <button type="submit" class="rounded bg-theme-primary px-4 py-2 text-sm font-medium hover:bg-theme-primary transition whitespace-nowrap">
-            Create
-          </button>
+          <button type="submit" class="rounded bg-theme-primary px-4 py-2 text-sm font-medium hover:bg-theme-primary transition whitespace-nowrap">Create</button>
         </form>
       </div>
       <div id="squads-list"></div>`;
@@ -763,11 +1298,7 @@ const sl = labels.social;
       const name = input.value.trim();
       if (!name) return;
       try {
-        const res = await fetch(`${hubUrl}/api/bluesky-feed/squads`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ name }),
-        });
+        const res = await fetch(`${hubUrl}/api/bluesky-feed/squads`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ name }) });
         if (!res.ok) { const d = await res.json(); alert(d.error); return; }
         input.value = '';
         document.getElementById('create-squad-form').classList.add('hidden');
@@ -775,27 +1306,20 @@ const sl = labels.social;
       } catch { alert('Failed to create squad'); }
     });
 
-    document.getElementById('squad-select').addEventListener('change', (e) => {
-      const id = e.target.value;
-      showSquad(id);
-    });
-
+    document.getElementById('squad-select').addEventListener('change', (e) => showSquad(e.target.value));
     loadSquads();
+    isLoading = false;
   }
 
   function showSquad(id) {
     const container = document.getElementById('squads-list');
     if (!container) return;
-    if (!id) {
-      container.innerHTML = '<div class="text-center py-8 text-theme-faint">Select a squad above or create a new one</div>';
-      return;
-    }
+    if (!id) { container.innerHTML = '<div class="text-center py-8 text-theme-faint">Select a squad above or create a new one</div>'; return; }
     const squad = allSquads.find(s => String(s.id) === String(id));
     if (!squad) return;
     container.innerHTML = renderSquad(squad);
     attachSquadListeners();
     initHlsVideos();
-    // Use cached lastPostAt from DB for instant dot colors (no API call)
     applyCachedActivity(squad);
   }
 
@@ -804,30 +1328,22 @@ const sl = labels.social;
     const select = document.getElementById('squad-select');
     if (!container || !select) return;
     try {
-      const res = await fetch(`${hubUrl}/api/bluesky-feed/squads`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${hubUrl}/api/bluesky-feed/squads`, { headers: { Authorization: `Bearer ${token}` } });
       allSquads = await res.json();
-
-      // Preserve current selection
       const prevId = select.value;
-
-      // Rebuild select options
-      select.innerHTML = '<option value="">Select a squad...</option>' +
-        allSquads.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.members.length})</option>`).join('');
-
-      if (!allSquads.length) {
-        container.innerHTML = '<div class="text-center py-8 text-theme-faint">No squads yet. Create one!</div>';
-        return;
-      }
-
-      // Re-select previous or first
+      select.innerHTML = '<option value="">Select a squad...</option>' + allSquads.map(s => `<option value="${s.id}">${escapeHtml(s.name)} (${s.members.length})</option>`).join('');
+      if (!allSquads.length) { container.innerHTML = '<div class="text-center py-8 text-theme-faint">No squads yet. Create one!</div>'; return; }
       const targetId = prevId && allSquads.find(s => String(s.id) === String(prevId)) ? prevId : String(allSquads[0].id);
       select.value = targetId;
       showSquad(targetId);
-    } catch {
-      container.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad}</div>`;
-    }
+    } catch { container.innerHTML = `<div class="text-center py-8 text-red-400">${L.failedToLoad || 'Failed to load'}</div>`; }
+  }
+
+  function formatWindow(minutes) {
+    if (minutes < 60) return `${minutes}m`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return m ? `${h}h ${m}m` : `${h}h`;
   }
 
   function renderSquad(squad) {
@@ -838,20 +1354,14 @@ const sl = labels.social;
         <h2 class="text-lg font-semibold">${escapeHtml(squad.name)}</h2>
         <button class="delete-squad-btn text-xs text-red-400 hover:text-red-300 transition" data-squad-id="${squad.id}">Delete</button>
       </div>
-
       <div class="mb-4 flex items-center gap-3">
         <label class="text-xs text-theme-faint whitespace-nowrap">Activity window:</label>
-        <input type="range" min="15" max="720" step="15" value="${squad.activityWindow}"
-          class="flex-1 accent-blue-500 squad-window-slider" data-squad-id="${squad.id}" />
+        <input type="range" min="15" max="720" step="15" value="${squad.activityWindow}" class="flex-1 accent-blue-500 squad-window-slider" data-squad-id="${squad.id}" />
         <span class="text-xs text-theme-muted w-16 text-right squad-window-label" data-squad-id="${squad.id}">${windowLabel}</span>
       </div>
-
       <div class="squad-circle relative flex justify-center items-center my-6" style="min-height:16rem">
         <div class="my-center-avatar absolute rounded-full border-2 border-blue-500 overflow-hidden bg-theme-input-bg flex items-center justify-center" style="width:4rem;height:4rem;z-index:2">
-          ${myAvatar
-            ? `<img src="${escapeHtml(myAvatar)}" alt="You" class="w-full h-full object-cover" />`
-            : `<span class="text-lg">👤</span>`
-          }
+          ${myAvatar ? `<img src="${escapeHtml(myAvatar)}" alt="You" class="w-full h-full object-cover" />` : `<span class="text-lg">👤</span>`}
         </div>
         ${squad.members.map((m, i) => {
           const count = squad.members.length;
@@ -860,27 +1370,19 @@ const sl = labels.social;
           const x = Math.cos(angle) * radius;
           const y = Math.sin(angle) * radius;
           return `
-          <div class="absolute squad-member-avatar" data-member-id="${m.id}" data-handle="${escapeHtml(m.handle)}"
-            style="transform:translate(${x}px,${y}px);z-index:1">
+          <div class="absolute squad-member-avatar" data-member-id="${m.id}" data-handle="${escapeHtml(m.handle)}" style="transform:translate(${x}px,${y}px);z-index:1">
             <div class="relative group cursor-pointer">
               <div class="activity-dot absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-theme-card bg-theme-surface-hover z-10" data-member-id="${m.id}"></div>
-              ${m.avatarUrl
-                ? `<img src="${escapeHtml(m.avatarUrl)}" alt="${escapeHtml(m.displayName || m.handle)}" class="w-12 h-12 rounded-full border-2 border-theme-input-border hover:border-theme-card-hover transition" />`
-                : `<div class="w-12 h-12 rounded-full border-2 border-theme-input-border bg-theme-input-bg flex items-center justify-center text-theme-muted text-xs">${escapeHtml((m.handle || '?')[0].toUpperCase())}</div>`
-              }
-              <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-theme-faint whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none">
-                ${escapeHtml(m.displayName || m.handle)}
-              </div>
+              ${m.avatarUrl ? `<img src="${escapeHtml(m.avatarUrl)}" alt="${escapeHtml(m.displayName || m.handle)}" class="w-12 h-12 rounded-full border-2 border-theme-input-border hover:border-theme-card-hover transition" />` : `<div class="w-12 h-12 rounded-full border-2 border-theme-input-border bg-theme-input-bg flex items-center justify-center text-theme-muted text-xs">${escapeHtml((m.handle || '?')[0].toUpperCase())}</div>`}
+              <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-theme-faint whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none">${escapeHtml(m.displayName || m.handle)}</div>
             </div>
           </div>`;
         }).join('')}
       </div>
-
       <div class="flex gap-2 mt-4">
         <input type="text" placeholder="@handle.bsky.social" class="add-member-input flex-1 rounded bg-theme-input-bg border border-theme-input-border px-3 py-1.5 text-sm focus:outline-none focus:border-theme-primary" data-squad-id="${squad.id}" />
         <button class="add-member-btn rounded bg-theme-surface-hover px-3 py-1.5 text-sm hover:bg-theme-card-hover transition" data-squad-id="${squad.id}">Add</button>
       </div>
-
       <div class="mt-3 flex flex-wrap gap-1">
         ${squad.members.map(m => `
           <span class="inline-flex items-center gap-1 rounded bg-theme-input-bg px-2 py-0.5 text-xs text-theme-muted">
@@ -889,15 +1391,10 @@ const sl = labels.social;
           </span>
         `).join('')}
       </div>
-
       ${squad.members.length ? `
       <div class="flex gap-2 mt-4">
-        <button class="check-activity-btn flex-1 rounded bg-theme-input-bg py-2 text-sm hover:bg-theme-surface-hover transition" data-squad-id="${squad.id}">
-          Check Activity
-        </button>
-        <button class="view-squad-feed-btn flex-1 rounded bg-theme-input-bg py-2 text-sm hover:bg-theme-surface-hover transition" data-squad-id="${squad.id}">
-          View Squad Feed
-        </button>
+        <button class="check-activity-btn flex-1 rounded bg-theme-input-bg py-2 text-sm hover:bg-theme-surface-hover transition" data-squad-id="${squad.id}">Check Activity</button>
+        <button class="view-squad-feed-btn flex-1 rounded bg-theme-input-bg py-2 text-sm hover:bg-theme-surface-hover transition" data-squad-id="${squad.id}">View Squad Feed</button>
       </div>
       <div class="squad-feed hidden mt-4 space-y-4" data-squad-id="${squad.id}"></div>
       ` : ''}
@@ -910,8 +1407,7 @@ const sl = labels.social;
       const dot = document.querySelector(`.activity-dot[data-member-id="${m.id}"]`);
       if (!dot) return;
       if (m.lastPostAt && new Date(m.lastPostAt) >= cutoff) {
-        dot.classList.remove('bg-theme-surface-hover');
-        dot.classList.add('bg-green-500');
+        dot.classList.remove('bg-theme-surface-hover'); dot.classList.add('bg-green-500');
         dot.title = `Last posted ${timeAgo(m.lastPostAt)} (cached)`;
       } else {
         dot.title = m.lastPostAt ? `Last posted ${timeAgo(m.lastPostAt)} (cached)` : 'No data yet';
@@ -921,36 +1417,40 @@ const sl = labels.social;
 
   async function checkSquadActivity(squadId) {
     const squad = allSquads.find(s => String(s.id) === String(squadId));
-    if (!squad || !squad.members.length) return;
-    try {
-      const cutoff = new Date(Date.now() - squad.activityWindow * 60 * 1000);
-      const results = await Promise.allSettled(
-        squad.members.map(async (m) => {
-          const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(m.did || m.handle)}&limit=1&filter=posts_no_replies`;
-          const res = await fetch(url);
-          if (!res.ok) return { id: m.id, lastPostAt: null, isActive: false };
-          const data = await res.json();
-          const lastPost = data.feed?.[0]?.post;
-          const lastPostAt = lastPost ? lastPost.indexedAt : null;
-          return { id: m.id, lastPostAt, isActive: lastPostAt ? new Date(lastPostAt) >= cutoff : false };
-        })
-      );
-      results.forEach(r => {
-        if (r.status !== 'fulfilled') return;
-        const m = r.value;
-        const dot = document.querySelector(`.activity-dot[data-member-id="${m.id}"]`);
-        if (!dot) return;
-        if (m.isActive) {
-          dot.classList.remove('bg-theme-surface-hover');
-          dot.classList.add('bg-green-500');
-          dot.title = `Last posted ${timeAgo(m.lastPostAt)}`;
-        } else {
-          dot.classList.remove('bg-green-500');
-          dot.classList.add('bg-theme-surface-hover');
-          dot.title = m.lastPostAt ? `Last posted ${timeAgo(m.lastPostAt)}` : 'No recent posts';
-        }
-      });
-    } catch {}
+    if (!squad?.members.length) return;
+    const cutoff = new Date(Date.now() - squad.activityWindow * 60 * 1000);
+    const results = await Promise.allSettled(
+      squad.members.map(async (m) => {
+        const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(m.did || m.handle)}&limit=1&filter=posts_no_replies`;
+        const res = await fetch(url);
+        if (!res.ok) return { id: m.id, lastPostAt: null, isActive: false };
+        const data = await res.json();
+        const lastPost = data.feed?.[0]?.post;
+        const lastPostAt = lastPost ? lastPost.indexedAt : null;
+        return { id: m.id, lastPostAt, isActive: lastPostAt ? new Date(lastPostAt) >= cutoff : false };
+      })
+    );
+    results.forEach(r => {
+      if (r.status !== 'fulfilled') return;
+      const m = r.value;
+      const dot = document.querySelector(`.activity-dot[data-member-id="${m.id}"]`);
+      if (!dot) return;
+      if (m.isActive) { dot.classList.remove('bg-theme-surface-hover'); dot.classList.add('bg-green-500'); dot.title = `Last posted ${timeAgo(m.lastPostAt)}`; }
+      else { dot.classList.remove('bg-green-500'); dot.classList.add('bg-theme-surface-hover'); dot.title = m.lastPostAt ? `Last posted ${timeAgo(m.lastPostAt)}` : 'No recent posts'; }
+    });
+  }
+
+  async function fetchSquadFeedDirect(members) {
+    const results = await Promise.allSettled(members.map(m => {
+      return (async () => {
+        const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(m.did || m.handle)}&limit=5&filter=posts_and_author_threads`;
+        const res = await fetchTimeout(url, {}, 8000);
+        if (!res.ok) throw new Error(`API ${res.status}`);
+        const data = await res.json();
+        return (data.feed || []).map(item => normalizeBskyPost(item));
+      })();
+    }));
+    return results.filter(r => r.status === 'fulfilled').flatMap(r => r.value).sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
   }
 
   function attachSquadListeners() {
@@ -960,33 +1460,16 @@ const sl = labels.social;
         if (label) label.textContent = formatWindow(parseInt(slider.value));
       });
       slider.addEventListener('change', async () => {
-        await fetch(`${hubUrl}/api/bluesky-feed/squads/${slider.dataset.squadId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ activityWindow: parseInt(slider.value) }),
-        });
+        await fetch(`${hubUrl}/api/bluesky-feed/squads/${slider.dataset.squadId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ activityWindow: parseInt(slider.value) }) });
       });
     });
 
     document.querySelectorAll('.check-activity-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        btn.textContent = 'Checking...';
-        btn.disabled = true;
-        await checkSquadActivity(btn.dataset.squadId);
-        btn.textContent = 'Check Activity';
-        btn.disabled = false;
-      });
+      btn.addEventListener('click', async () => { btn.textContent = 'Checking...'; btn.disabled = true; await checkSquadActivity(btn.dataset.squadId); btn.textContent = 'Check Activity'; btn.disabled = false; });
     });
 
     document.querySelectorAll('.delete-squad-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!confirm('Delete this squad?')) return;
-        await fetch(`${hubUrl}/api/bluesky-feed/squads/${btn.dataset.squadId}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        loadSquads();
-      });
+      btn.addEventListener('click', async () => { if (!confirm('Delete this squad?')) return; await fetch(`${hubUrl}/api/bluesky-feed/squads/${btn.dataset.squadId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }); loadSquads(); });
     });
 
     document.querySelectorAll('.add-member-btn').forEach(btn => {
@@ -994,14 +1477,9 @@ const sl = labels.social;
         const input = document.querySelector(`.add-member-input[data-squad-id="${btn.dataset.squadId}"]`);
         const handle = input.value.trim();
         if (!handle) return;
-        btn.textContent = '...';
-        btn.disabled = true;
+        btn.textContent = '...'; btn.disabled = true;
         try {
-          const res = await fetch(`${hubUrl}/api/bluesky-feed/squads/${btn.dataset.squadId}/members`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ handle }),
-          });
+          const res = await fetch(`${hubUrl}/api/bluesky-feed/squads/${btn.dataset.squadId}/members`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ handle }) });
           if (!res.ok) { const d = await res.json(); alert(d.error); return; }
           input.value = '';
           loadSquads();
@@ -1012,10 +1490,7 @@ const sl = labels.social;
 
     document.querySelectorAll('.remove-member-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        await fetch(`${hubUrl}/api/bluesky-feed/squads/${btn.dataset.squadId}/members/${btn.dataset.memberId}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await fetch(`${hubUrl}/api/bluesky-feed/squads/${btn.dataset.squadId}/members/${btn.dataset.memberId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
         loadSquads();
       });
     });
@@ -1023,22 +1498,19 @@ const sl = labels.social;
     document.querySelectorAll('.view-squad-feed-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const feedEl = document.querySelector(`.squad-feed[data-squad-id="${btn.dataset.squadId}"]`);
-        if (!feedEl.classList.contains('hidden')) {
-          feedEl.classList.add('hidden');
-          btn.textContent = 'View Squad Feed';
-          return;
-        }
+        if (!feedEl.classList.contains('hidden')) { feedEl.classList.add('hidden'); btn.textContent = 'View Squad Feed'; return; }
         const squad = allSquads.find(s => String(s.id) === btn.dataset.squadId);
-        if (!squad || !squad.members.length) return;
-        btn.textContent = L.loading;
+        if (!squad?.members.length) return;
+        btn.textContent = L.loading || 'Loading...';
         try {
           const posts = await fetchSquadFeedDirect(squad.members);
-          feedEl.innerHTML = posts.map(post => renderSquadCard(post)).join('') || `<div class="text-center py-4 text-theme-faint">${L.noPosts}</div>`;
+          feedEl.innerHTML = posts.map(p => renderPostCard(p)).join('') || `<div class="text-center py-4 text-theme-faint">${L.noPosts || 'No posts'}</div>`;
           feedEl.classList.remove('hidden');
           btn.textContent = 'Hide Squad Feed';
+          attachAllListeners();
           initHlsVideos();
         } catch {
-          feedEl.innerHTML = `<div class="text-center py-4 text-red-400">${L.failedToLoad}</div>`;
+          feedEl.innerHTML = `<div class="text-center py-4 text-red-400">${L.failedToLoad || 'Failed to load'}</div>`;
           feedEl.classList.remove('hidden');
           btn.textContent = 'Hide Squad Feed';
         }
@@ -1046,130 +1518,35 @@ const sl = labels.social;
     });
 
     document.querySelectorAll('.squad-member-avatar').forEach(el => {
-      el.addEventListener('click', async () => {
-        const handle = el.dataset.handle;
-        const squadEl = el.closest('[data-squad-id]');
-        const feedEl = squadEl.querySelector('.squad-feed');
-        const feedBtn = squadEl.querySelector('.view-squad-feed-btn');
-        if (!feedEl || !feedBtn) return;
-        feedBtn.textContent = `Loading @${handle}...`;
-        try {
-          const data = await fetchAuthorFeedDirect(handle, 10);
-          feedEl.innerHTML = data.map(post => renderSquadCard(post)).join('') || `<div class="text-center py-4 text-theme-faint">${L.noPosts}</div>`;
-          feedEl.classList.remove('hidden');
-          feedBtn.textContent = 'Hide Squad Feed';
-          initHlsVideos();
-        } catch {
-          feedEl.innerHTML = `<div class="text-center py-4 text-red-400">${L.failedToLoad}</div>`;
-          feedEl.classList.remove('hidden');
-          feedBtn.textContent = 'Hide Squad Feed';
-        }
-      });
+      el.addEventListener('click', () => openProfile(el.dataset.handle));
     });
   }
 
-  function renderSquadCard(post) {
-    const embed = post.embedData || {};
-    let embedHtml = '';
-    if (embed.images?.length > 1) {
-      embedHtml += `<div class="grid grid-cols-2 gap-1 mt-2 rounded overflow-hidden">
-        ${embed.images.map(img => `<img src="${escapeHtml(img.fullsize || img.thumb)}" alt="${escapeHtml(img.alt || '')}" class="w-full object-cover aspect-square" loading="lazy" onerror="this.style.display='none'" />`).join('')}
-      </div>`;
-    }
-    if (embed.images?.length === 1) {
-      embedHtml += `<div class="mt-2 bg-black flex justify-center rounded overflow-hidden"><img src="${escapeHtml(embed.images[0].fullsize || embed.images[0].thumb)}" alt="${escapeHtml(embed.images[0].alt || '')}" style="width:100%;max-height:20rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>`;
-    }
-    if (embed.video?.playlist) {
-      embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
-        <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
-      </div>`;
-    }
-    if (embed.external?.uri) {
-      const ytId = getYouTubeId(embed.external.uri);
-      if (ytId) {
-        embedHtml += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
-      } else {
-        embedHtml += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-theme-input-border overflow-hidden hover:border-theme-card-hover transition">
-          ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
-          <div class="p-3"><div class="text-sm font-medium text-theme-text line-clamp-1">${escapeHtml(embed.external.title || '')}</div></div>
-        </a>`;
-      }
-    }
-    if (embed.quote?.text) {
-      embedHtml += `<div class="mt-2 rounded border border-theme-input-border p-3 bg-theme-surface/50">
-        <div class="text-xs text-theme-muted mb-1"><span class="font-medium text-theme-text">${escapeHtml(embed.quote.author)}</span> <span class="text-theme-faint">@${escapeHtml(embed.quote.handle)}</span></div>
-        <p class="text-sm text-theme-text line-clamp-3">${escapeHtml(embed.quote.text)}</p>
-      </div>`;
-    }
-    return `
-    <article class="rounded-lg border border-theme-card-border bg-theme-card/50 p-4">
-      <div class="flex items-center gap-2 mb-2">
-        ${post.author.avatar ? `<img src="${escapeHtml(post.author.avatar)}" class="h-8 w-8 rounded-full" />` : ''}
-        <div>
-          <span class="text-sm font-medium">${escapeHtml(post.author.displayName)}</span>
-          <span class="text-xs text-theme-faint ml-1">@${escapeHtml(post.author.handle)}</span>
-        </div>
-        <time class="text-xs text-theme-faint ml-auto">${timeAgo(post.pubDate)}</time>
-      </div>
-      ${post.text ? `<p class="text-sm whitespace-pre-wrap">${escapeHtml(post.text)}</p>` : ''}
-      ${embedHtml}
-      <div class="mt-2 flex items-center gap-3 text-xs text-theme-faint">
-        <span>♡ ${post.likeCount}</span>
-        <span>🔁 ${post.repostCount}</span>
-        <span>💬 ${post.replyCount}</span>
-        <a href="${escapeHtml(post.link)}" target="_blank" class="hover:text-theme-text ml-auto">↗ Open</a>
-      </div>
-    </article>`;
-  }
-
-  function formatWindow(minutes) {
-    if (minutes < 60) return `${minutes}m`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return m ? `${h}h ${m}m` : `${h}h`;
-  }
-
-  function timeAgo(dateStr) {
-    if (!dateStr) return 'never';
-    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  }
-
-  // Auto-load if signed in
+  // ============================================================
+  // INIT
+  // ============================================================
   if (token) {
-    // Fetch Bluesky handle in background for public API fallback & squads
     initSquadsProfile();
-    loadFeed();
+    updateUI();
+    loadCurrentTab();
+  } else {
+    updateUI();
+    loadFeedTab();
   }
 </script>
 
 <style>
-  .active-tab {
+  .active-tab, .active-pill {
     background-color: var(--ps-surface-hover);
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .animate-spin { animation: spin .6s linear infinite; }
   input[type="range"] {
-    height: 4px;
-    border-radius: 2px;
-    background: #3f3f46;
-    appearance: none;
-    -webkit-appearance: none;
-    cursor: pointer;
+    height: 4px; border-radius: 2px; background: #3f3f46;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
   }
   input[type="range"]::-webkit-slider-thumb {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #3b82f6;
-    cursor: pointer;
+    appearance: none; -webkit-appearance: none;
+    width: 14px; height: 14px; border-radius: 50%; background: #3b82f6; cursor: pointer;
   }
 </style>

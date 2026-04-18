@@ -45,21 +45,20 @@
   },
   "social": {
     "heading": "Social Feed",
-    "tabPeople": "People",
-    "signInPrompt": "Sign in to see your timeline",
+    "tabFeed": "Feed",
+    "tabDiscover": "Discover",
+    "tabSquads": "Squads",
+    "tabSearch": "Search",
+    "signInPrompt": "Sign in to see your feed",
     "noUsers": "No users yet",
     "readButton": "↗ Read",
-    "tabSquads": "Squads",
     "shareButton": "↗ Share",
-    "tabBluesky": "Bluesky",
     "noPosts": "No posts yet",
     "signInButton": "Sign in with GitHub",
-    "tabTimeline": "Timeline",
     "viewButton": "↗ View",
     "loading": "Loading...",
     "connectBluesky": "Connect your Bluesky account in Settings to see your feed",
-    "failedToLoad": "Failed to load feed",
-    "tabDiscover": "Discover"
+    "failedToLoad": "Failed to load feed"
   },
   "about": {
     "heading": "About This Site"

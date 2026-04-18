@@ -123,7 +123,7 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   // ── Listen for messages from the youtube-nocookie iframe ──
   useEffect(() => {
     const onMessage = (event) => {
-      // Only accept messages from youtube-nocookie
+      // Only accept messages from youtube-nocookie or youtube
       if (!event.origin.includes('youtube-nocookie.com') && !event.origin.includes('youtube.com')) return;
 
       let data;
@@ -131,8 +131,11 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
       } catch { return; }
 
+      if (!data || !data.event) return;
+
+      // State changes: data.info can be a number directly or an object
       if (data.event === 'onStateChange') {
-        const state = data.info;
+        const state = typeof data.info === 'object' ? data.info?.playerState : data.info;
         if (state === 1) { // PLAYING
           setIsPlaying(true);
           setStarted(true);
@@ -148,8 +151,10 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         }
       }
 
+      // infoDelivery carries currentTime, duration, volume, etc.
       if (data.event === 'infoDelivery' && data.info) {
         if (data.info.currentTime !== undefined) {
+          setStarted(true);
           const cur = currentRef.current;
           const cs = cur.startTime || 0;
           setProgress(Math.max(0, data.info.currentTime - cs));
@@ -161,6 +166,24 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
           const cur = currentRef.current;
           setDuration((cur.endTime || data.info.duration) - (cur.startTime || 0));
         }
+        if (data.info.playerState !== undefined) {
+          const state = data.info.playerState;
+          if (state === 1) { setIsPlaying(true); setStarted(true); }
+          else if (state === 2) { setIsPlaying(false); }
+          else if (state === 0) {
+            setIsPlaying(false);
+            const now = Date.now();
+            if (now - lastAdvanceTimeRef.current > 500) {
+              lastAdvanceTimeRef.current = now;
+              handleNextRef.current?.();
+            }
+          }
+        }
+      }
+
+      // onReady event — start polling once the player is ready
+      if (data.event === 'onReady') {
+        setStarted(true);
       }
     };
 
@@ -171,12 +194,22 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   // ── When iframe loads, subscribe to its events via postMessage ──
   const onIframeLoad = useCallback(() => {
     if (!iframeRef.current) return;
-    // Send 'listening' to establish postMessage channel
-    iframeRef.current.contentWindow.postMessage(JSON.stringify({
-      event: 'listening',
-    }), '*');
+    const win = iframeRef.current.contentWindow;
+    if (!win) return;
 
-    // YouTube postMessage API requires explicit calls to get time/duration info
+    // Send 'listening' to establish postMessage channel
+    win.postMessage(JSON.stringify({ event: 'listening' }), '*');
+
+    // Subscribe to player events explicitly
+    setTimeout(() => {
+      if (!iframeRef.current) return;
+      const w = iframeRef.current.contentWindow;
+      if (!w) return;
+      // Subscribe to state changes
+      w.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }), '*');
+      w.postMessage(JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onReady'] }), '*');
+    }, 300);
+
     // Poll for current time updates to drive the scrubber
     clearInterval(progressInterval.current);
     progressInterval.current = setInterval(() => {
@@ -184,14 +217,14 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         clearInterval(progressInterval.current);
         return;
       }
-      // Request current time and duration via postMessage
       iframeRef.current.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: 'getCurrentTime',
+        event: 'command', func: 'getCurrentTime',
       }), '*');
       iframeRef.current.contentWindow.postMessage(JSON.stringify({
-        event: 'command',
-        func: 'getDuration',
+        event: 'command', func: 'getDuration',
+      }), '*');
+      iframeRef.current.contentWindow.postMessage(JSON.stringify({
+        event: 'command', func: 'getPlayerState',
       }), '*');
     }, 500);
 

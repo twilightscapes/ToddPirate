@@ -343,6 +343,15 @@ const sl = labels.social;
   // Create a new Bluesky post or reply
   // linkCard can be passed from the preview UI to avoid re-fetching
   async function createBskyRecord(text, replyTo, linkCard) {
+    // If a link card is attached, strip the detected URL from the body text to save space
+    if (linkCard && !linkCard.removed && linkCard.url) {
+      const cardUrl = linkCard.url.replace(/^https?:\/\//, '');
+      // Try stripping the full URL first, then bare domain form
+      text = text.replace(new RegExp(`https?:\\/\\/${cardUrl.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}`, 'g'), '').trim();
+      text = text.replace(new RegExp(`(?:^|\\s)${cardUrl.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}(?=\\s|$)`, 'g'), '').trim();
+      // Clean up double spaces left behind
+      text = text.replace(/  +/g, ' ').trim();
+    }
     const record = {
       '$type': 'app.bsky.feed.post',
       text,

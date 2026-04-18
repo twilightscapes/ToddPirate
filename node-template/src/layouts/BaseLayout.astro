@@ -186,12 +186,15 @@ const allNavItems = [...visibleNavItems, ...autoNavPages];
       </div>
     ))}
 
+    <!-- footer hidden for now -->
+    <!--
     <footer class="border-t border-theme-border bg-theme-footer mt-16">
       <div class="mx-auto max-w-6xl px-4 py-8 text-center text-sm text-theme-faint">
         <p>{labels.footer.poweredBy.split('Pirate Social')[0]}<a href="https://github.com/piratesocial" class="underline hover:text-theme-text">Pirate Social</a></p>
         <p class="mt-1">Part of the distributed photography network &middot; <a href={`${base}/feed.xml`} class="underline">{labels.nav.rss}</a></p>
       </div>
     </footer>
+    -->
 
     <script is:inline define:vars={{ hubUrl: siteConfig.hubUrl, socialEnabled: enableSocial }} data-astro-rerun>
       // Handle auth token from OAuth redirect

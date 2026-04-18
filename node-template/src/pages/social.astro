@@ -740,7 +740,7 @@ const sl = labels.social;
     if (embed.external?.uri) {
       const ytId = getYouTubeId(embed.external.uri);
       if (ytId) {
-        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
+        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video"><iframe src="https://www.youtube-nocookie.com/embed/${ytId}?enablejsapi=1" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`;
       } else {
         html += `<a href="${escapeHtml(embed.external.uri)}" target="_blank" rel="noopener noreferrer" class="mt-2 block rounded border border-theme-input-border overflow-hidden hover:border-theme-card-hover transition">
           ${embed.external.thumb ? `<img src="${escapeHtml(embed.external.thumb)}" alt="" class="w-full aspect-[2/1] object-cover" loading="lazy" onerror="this.style.display='none'" />` : ''}
@@ -1969,7 +1969,6 @@ const sl = labels.social;
   // Observe video/iframe containers for scroll-away
   const miniPlayerObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      if (!socialSettings.miniPlayerEnabled) return;
       const container = entry.target;
       if (!entry.isIntersecting) {
         // Scrolled out of view
@@ -1980,12 +1979,10 @@ const sl = labels.social;
         if (!socialSettings.miniPlayerEnabled) {
           if (content.tagName === 'VIDEO' && !content.paused) content.pause();
           if (content.tagName === 'IFRAME' && content._userActivated) {
-            const oldSrc = content.src;
-            content.src = '';
-            content._savedSrc = oldSrc;
+            // Use postMessage to pause YouTube without reloading (avoids ads)
+            try { content.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch {}
             content._userActivated = false;
             addIframeOverlay(container, content);
-            setTimeout(() => { if (content._savedSrc) { content.src = content._savedSrc; delete content._savedSrc; } }, 100);
           }
           return;
         }
@@ -2011,9 +2008,24 @@ const sl = labels.social;
     overlay.style.cssText = 'position:absolute;inset:0;z-index:5;cursor:pointer';
     overlay.addEventListener('click', () => {
       iframe._userActivated = true;
+      pauseAllMedia(iframe);
       overlay.remove();
     });
     container.appendChild(overlay);
+  }
+
+  function pauseAllMedia(except) {
+    document.querySelectorAll('.aspect-video video').forEach(v => {
+      if (v !== except && !v.paused) v.pause();
+    });
+    document.querySelectorAll('.aspect-video iframe').forEach(f => {
+      if (f !== except && f._userActivated) {
+        try { f.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*'); } catch {}
+        f._userActivated = false;
+        const c = f.closest('.aspect-video');
+        if (c && !c.querySelector('[style*="inset"]')) addIframeOverlay(c, f);
+      }
+    });
   }
 
   function observeVideos() {
@@ -2021,10 +2033,11 @@ const sl = labels.social;
       if (container._miniPlayerObserved) return;
       container._miniPlayerObserved = true;
       miniPlayerObserver.observe(container);
-      // For HLS videos, track play/pause
+      // For HLS videos, track play/pause and pause others on play
       const video = container.querySelector('video');
-      if (video) {
-        video.addEventListener('play', () => { video._wasPlaying = true; });
+      if (video && !video._playListenerAdded) {
+        video._playListenerAdded = true;
+        video.addEventListener('play', () => { video._wasPlaying = true; pauseAllMedia(video); });
         video.addEventListener('pause', () => { video._wasPlaying = false; });
       }
       // For iframes (YouTube), add a click overlay to detect user interaction

@@ -109,17 +109,7 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
   const onPlayerReady = useCallback((e) => {
     playerReadyRef.current = true;
     e.target.setVolume(volume);
-    
-    // On mobile/touch with no gesture yet, start muted (auto-unmute after 1.5s)
-    if (isTouchDeviceRef.current && !hasUserGesturedRef.current) {
-      e.target.mute();
-      setTimeout(() => {
-        if (!hasUserGesturedRef.current) {
-          e.target.unMute();
-          hasUserGesturedRef.current = true;
-        }
-      }, 1500);
-    }
+    console.log('[YouTubePlayer] Player ready, initial mute state:', e.target.isMuted());
   }, [volume]);
 
   const onPlayerStateChange = useCallback((e) => {
@@ -175,20 +165,21 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
         height: '100%',
         videoId: first.id,
         playerVars: {
-          autoplay: 1,  // Enable autoplay BUT...
+          autoplay: 0,  // Don't autoplay first video - wait for user click (no ads that way)
           controls: useNativeControls ? 1 : 0,
           modestbranding: 1,
           rel: 0,
           playsinline: 1,
           start: first.startTime || 0,
           end: first.endTime,
-          mute: 1,  // ...start MUTED to avoid ads. User gesture will unmute.
+          mute: 1,  // Start muted so IF autoplay somehow triggers, at least no audio
         },
         events: {
           onReady: onPlayerReady,
           onStateChange: onPlayerStateChange,
         },
       });
+      console.log('[YouTubePlayer] Initialized with videoId:', first.id, 'autoplay: 0 (wait for click), mute: 1');
     }
 
     if (window.YT && window.YT.Player) {
@@ -240,20 +231,26 @@ function InteractivePlayer({ playlist, audioOnly, isFloating, heading, caption, 
     try {
       // IMPORTANT: Mark gesture within the sync click context (before any async)
       hasUserGesturedRef.current = true;
+      console.log('[YouTubePlayer] User clicked play - marking gesture');
       
       // Unmute synchronously in this gesture context
       if (playerRef.current.unMute) {
         playerRef.current.unMute();
+        console.log('[YouTubePlayer] Unmuted synchronously in click handler');
       }
       
       const state = playerRef.current.getPlayerState();
       if (state === 1) { // YT.PlayerState.PLAYING
         playerRef.current.pauseVideo();
+        console.log('[YouTubePlayer] Paused');
       } else {
         setStarted(true);
         playerRef.current.playVideo();
+        console.log('[YouTubePlayer] Playing');
       }
-    } catch (e) { /* player not ready */ }
+    } catch (e) { 
+      console.error('[YouTubePlayer] Error in togglePlay:', e);
+    }
   }, []); // no deps — reads player state directly
 
   const skipTo = useCallback((idx) => {

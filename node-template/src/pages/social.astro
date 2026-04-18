@@ -1274,12 +1274,13 @@ const sl = labels.social;
           const res = await fetch(`${hubUrl}/api/bluesky-feed/squads`, { headers: { Authorization: `Bearer ${token}` } });
           const squads = await res.json();
           if (!squads.length) return alert('Create a squad first in the Squads tab');
+          const rect = btn.getBoundingClientRect();
           const picker = document.createElement('div');
           picker.className = 'squad-picker';
-          picker.style.cssText = 'position:absolute;right:0;top:100%;z-index:50;background:var(--ps-card-bg);border:1px solid var(--ps-card-border);border-radius:.5rem;padding:.25rem 0;min-width:10rem;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+          picker.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.bottom + 4}px;z-index:70;background:var(--ps-card-bg, #1a1a2e);border:1px solid var(--ps-card-border, #333);border-radius:.5rem;padding:.25rem 0;min-width:10rem;box-shadow:0 4px 12px rgba(0,0,0,.4)`;
           squads.forEach(sq => {
             const item = document.createElement('button');
-            item.style.cssText = 'display:block;width:100%;text-align:left;padding:.5rem .75rem;background:none;border:none;color:var(--ps-text);cursor:pointer;font-size:.8rem';
+            item.style.cssText = 'display:block;width:100%;text-align:left;padding:.5rem .75rem;background:none;border:none;color:var(--ps-text, #e0e0e0);cursor:pointer;font-size:.8rem';
             item.textContent = sq.name;
             item.addEventListener('mouseenter', () => item.style.background = 'var(--ps-surface-hover, rgba(255,255,255,.1))');
             item.addEventListener('mouseleave', () => item.style.background = 'none');
@@ -1294,8 +1295,7 @@ const sl = labels.social;
             });
             picker.appendChild(item);
           });
-          btn.style.position = 'relative';
-          btn.appendChild(picker);
+          document.body.appendChild(picker);
           const closePicker = (ev) => { if (!picker.contains(ev.target) && ev.target !== btn) { picker.remove(); document.removeEventListener('click', closePicker); } };
           setTimeout(() => document.addEventListener('click', closePicker), 0);
         } catch (err) { console.error('Squad picker error:', err); }

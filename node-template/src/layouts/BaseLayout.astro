@@ -235,7 +235,7 @@ const allNavItems = [...visibleNavItems, ...autoNavPages];
 
       // Back button — show only when there's history to go back to
       const backBtn = document.getElementById('back-btn');
-      if (backBtn && window.history.length > 1 && document.referrer && new URL(document.referrer).origin === window.location.origin) {
+      if (backBtn && window.history.length > 1 && window.location.pathname !== '/') {
         backBtn.classList.remove('hidden');
         backBtn.addEventListener('click', () => window.history.back());
       }

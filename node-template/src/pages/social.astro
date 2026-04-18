@@ -10,8 +10,8 @@ const sl = labels.social;
     <div class="sticky top-[41px] md:top-[57px] z-30 -mx-4 px-3 py-2 md:px-4 md:py-4 mb-4 md:mb-8 flex items-center justify-between bg-theme-bg/95 backdrop-blur supports-[backdrop-filter]:bg-theme-bg/80 border-b border-theme-border">
       <h1 class="text-lg md:text-2xl font-bold font-heading whitespace-nowrap mr-3">{sl.heading}</h1>
       <div class="flex gap-1 md:gap-2">
-        <button id="tab-feed" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition active-tab">
-          {sl.tabFeed}
+        <button id="tab-timeline" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition active-tab">
+          {sl.tabTimeline}
         </button>
         <button id="tab-discover" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
           {sl.tabDiscover}
@@ -22,8 +22,8 @@ const sl = labels.social;
         <button id="tab-youtube" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
           {sl.tabYouTube}
         </button>
-        <button id="tab-search" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
-          {sl.tabSearch}
+        <button id="tab-rss" class="rounded bg-theme-input-bg px-2 py-1 text-xs md:px-3 md:py-1.5 md:text-sm hover:bg-theme-surface-hover transition">
+          RSS
         </button>
       </div>
     </div>
@@ -47,19 +47,11 @@ const sl = labels.social;
       <button class="discover-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-sub="feeds">Custom Feeds</button>
     </div>
 
-    <!-- Search bar (shown for Search tab) -->
-    <div id="search-bar" class="hidden mb-4">
-      <div class="flex gap-2">
-        <input id="search-input" type="text" placeholder="Search Bluesky posts, users, or feeds..."
-          class="flex-1 rounded-lg bg-theme-input-bg border border-theme-input-border px-4 py-2 text-sm focus:outline-none focus:border-theme-primary" />
-        <button id="search-btn" class="rounded-lg bg-theme-primary px-4 py-2 text-sm font-medium text-white hover:bg-theme-primary-hover transition">Search</button>
-      </div>
-      <div class="flex gap-1.5 mt-2">
-        <button class="search-type-pill active-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-type="posts">Posts</button>
-        <button class="search-type-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-type="users">Users</button>
-        <button class="search-type-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-type="feeds">Feeds</button>
-      </div>
-    </div>
+    <!-- Search bar (HIDDEN) -->
+    <div id="search-bar" class="hidden mb-4"></div>
+
+    <!-- RSS management section (shown for RSS tab) -->
+    <div id="rss-management" class="hidden mb-4 space-y-4"></div>
 
     <!-- Post composer (shown when logged in to Bluesky) -->
     <div id="compose-box" style="display:none" class="mb-6 rounded-lg border border-theme-card-border bg-theme-card p-4">
@@ -108,9 +100,9 @@ const sl = labels.social;
   const scrollSentinel = document.getElementById('scroll-sentinel');
   const filterBar = document.getElementById('feed-filters');
   const discoverPills = document.getElementById('discover-pills');
-  const searchBar = document.getElementById('search-bar');
+  const rssManagement = document.getElementById('rss-management');
 
-  let currentTab = 'feed';
+  let currentTab = 'timeline';
   let currentFilter = 'all';
   let currentDiscoverSub = 'trending';
   let currentSearchType = 'posts';
@@ -1107,10 +1099,9 @@ const sl = labels.social;
   scrollObserver.observe(scrollSentinel);
 
   function loadMore() {
-    if (currentTab === 'feed') { piratePage++; loadFeedTab(true); }
+    if (currentTab === 'timeline') { piratePage++; loadFeedTab(true); }
     else if (currentTab === 'discover' && activeFeedUri) { loadCustomFeedView(activeFeedUri, activeFeedName, true); }
     else if (currentTab === 'discover' && currentDiscoverSub === 'trending') { loadDiscoverTrending(true); }
-    else if (currentTab === 'search') { loadSearchResults(true); }
   }
 
   // --- Tab switching ---
@@ -1132,19 +1123,19 @@ const sl = labels.social;
   }
 
   function updateUI() {
-    filterBar.classList.toggle('hidden', currentTab !== 'feed');
+    filterBar.classList.toggle('hidden', currentTab !== 'timeline');
     discoverPills.classList.toggle('hidden', currentTab !== 'discover');
-    searchBar.classList.toggle('hidden', currentTab !== 'search');
+    rssManagement.classList.toggle('hidden', currentTab !== 'rss');
     const composeBox = document.getElementById('compose-box');
-    if (composeBox) composeBox.style.display = (currentTab === 'feed' && bskySession?.accessJwt) ? '' : 'none';
+    if (composeBox) composeBox.style.display = (currentTab === 'timeline' && bskySession?.accessJwt) ? '' : 'none';
   }
 
   function loadCurrentTab() {
-    if (currentTab === 'feed') loadFeedTab();
+    if (currentTab === 'timeline') loadFeedTab();
     else if (currentTab === 'discover') loadDiscoverTab();
     else if (currentTab === 'squads') renderSquadsView();
     else if (currentTab === 'youtube') loadYouTubeTab();
-    else if (currentTab === 'search') { feedContainer.innerHTML = `<div class="text-center py-8 text-theme-faint">Search for Bluesky posts, users, or feeds above</div>`; hasMore = false; scrollSentinel.classList.add('hidden'); }
+    else if (currentTab === 'rss') loadRSSTab();
   }
 
   // --- Filter pills ---
@@ -2466,7 +2457,7 @@ const sl = labels.social;
           });
           const ch = youtubeChannels.find(c => c.id === chId);
           if (ch) ch.feedEnabled = cb.checked;
-          if (currentTab === 'feed') loadFeedTab();
+          if (currentTab === 'timeline') loadFeedTab();
         } catch (err) {
           console.error('Failed to update feed setting:', err);
           cb.checked = !cb.checked;
@@ -2589,6 +2580,38 @@ const sl = labels.social;
     }
   }
 
+  async function loadRSSTab() {
+    feedContainer.innerHTML = `
+      <div class="space-y-6">
+        <div class="rounded-lg border border-theme-card-border bg-theme-card p-4">
+          <h2 class="text-lg font-semibold mb-3">RSS Feed Management</h2>
+          <p class="text-sm text-theme-faint mb-4">Use the filter pills above to manage which RSS feeds appear in your Timeline. Select from:</p>
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p class="font-medium text-theme-text mb-1">Content Types</p>
+              <ul class="text-theme-faint space-y-1 text-xs">
+                <li>• Videos</li>
+                <li>• Images</li>
+                <li>• Links</li>
+                <li>• Text Only</li>
+              </ul>
+            </div>
+            <div>
+              <p class="font-medium text-theme-text mb-1">Feed Sources</p>
+              <ul class="text-theme-faint space-y-1 text-xs">
+                <li>• Pirate RSS feeds</li>
+                <li>• No Reposts</li>
+                <li>• All posts</li>
+              </ul>
+            </div>
+          </div>
+          <p class="text-xs text-theme-faint mt-4">Your active filters above determine what shows in the Timeline tab.</p>
+        </div>
+      </div>`;
+    hasMore = false;
+    scrollSentinel.classList.add('hidden');
+  }
+
   // ============================================================
   // INITIALIZATION
   // ============================================================
@@ -2603,7 +2626,7 @@ const sl = labels.social;
     document.getElementById('social-login')?.addEventListener('click', () => { window.location.href = `${hubUrl}/api/auth/github`; });
     filterBar?.classList.add('hidden');
     discoverPills?.classList.add('hidden');
-    searchBar?.classList.add('hidden');
+    rssManagement?.classList.add('hidden');
     document.querySelector('.sticky.top-\\[41px\\]')?.querySelectorAll('button[id^="tab-"]').forEach(b => b.style.display = 'none');
   }
 </script>

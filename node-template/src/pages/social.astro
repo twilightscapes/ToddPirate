@@ -125,6 +125,15 @@ const sl = labels.social;
   let myLikes = {};    // uri -> likeUri
   let myReposts = {};  // uri -> repostUri
 
+  // Squad member lookup for highlighting in feed
+  let squadMemberHandles = new Set();
+
+  // Social settings (persisted in localStorage)
+  const defaultSocialSettings = { squadHighlight: true, squadBorderColor: '#eab308', miniPlayerEnabled: true, miniPlayerX: null, miniPlayerY: null };
+  let socialSettings = { ...defaultSocialSettings };
+  try { const s = JSON.parse(localStorage.getItem('ps_social_settings')); if (s) socialSettings = { ...defaultSocialSettings, ...s }; } catch {}
+  function saveSocialSettings() { localStorage.setItem('ps_social_settings', JSON.stringify(socialSettings)); }
+
   // ============================================================
   // SVG ICONS (Feather-style stroke icons + Bluesky butterfly)
   // ============================================================
@@ -137,6 +146,7 @@ const sl = labels.social;
     squad: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
     butterfly: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><path d="M1.159 1.829c.284-.16.625-.174.941-.127.466.071.905.259 1.317.482.698.381 1.305.903 1.871 1.457a20.933 20.933 0 0 1 2.233 2.65c.544.768 1.063 1.558 1.48 2.403.316-.645.698-1.254 1.096-1.851a23.74 23.74 0 0 1 1.238-1.672c.466-.573.958-1.125 1.49-1.639.477-.457.983-.889 1.551-1.229a5.09 5.09 0 0 1 1.089-.501c.339-.102.702-.166 1.054-.095.258.051.497.198.651.412.205.281.282.633.311.974.021.239.01.478-.005.717a80.443 80.443 0 0 1-.221 2.776 37.19 37.19 0 0 1-.126 1.152c-.039.27-.066.544-.156.803a3.131 3.131 0 0 1-.993 1.47c-.453.371-1.005.607-1.575.729-.692.15-1.412.144-2.11.035.732.131 1.464.332 2.114.703.429.247.827.584 1.05 1.033.187.369.223.804.122 1.203-.132.535-.454 1.003-.824 1.403a6.833 6.833 0 0 1-1.028.909c-.401.28-.853.51-1.343.573a1.883 1.883 0 0 1-1.127-.203c-.45-.234-.804-.615-1.092-1.026-.462-.666-.774-1.421-1.035-2.184-.04-.108-.07-.221-.12-.325l-.025.001c-.08.184-.133.379-.204.567-.244.682-.54 1.353-.956 1.95-.209.297-.45.574-.739.796a2.097 2.097 0 0 1-.797.39 1.97 1.97 0 0 1-.947-.017 3.313 3.313 0 0 1-1.02-.485c-.336-.23-.643-.5-.929-.788-.379-.379-.718-.816-.905-1.323a1.874 1.874 0 0 1-.085-1.068c.083-.361.29-.684.555-.939.464-.446 1.063-.719 1.67-.913a7.8 7.8 0 0 1 1.087-.256 6.658 6.658 0 0 1-1.367.067c-.802-.05-1.614-.281-2.258-.776a3.092 3.092 0 0 1-.967-1.263 2.8 2.8 0 0 1-.189-.627C.858 7.71.812 7.239.763 6.769a83.74 83.74 0 0 1-.238-2.961c-.03-.438-.031-.891.113-1.312.092-.272.265-.528.521-.67Z"/></svg>`,
     externalLink: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
+    squadBadge: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
   };
 
   // ============================================================
@@ -759,14 +769,18 @@ const sl = labels.social;
         ? `<div class="flex items-center gap-1 text-xs text-theme-faint mb-2">${ICON.repost} Reposted by ${escapeHtml(post.repostBy.displayName)}</div>`
         : '';
 
+      const isSquadMember = squadMemberHandles.has(post.author.handle);
+      const squadBorder = isSquadMember && socialSettings.squadHighlight ? `border-color:${socialSettings.squadBorderColor}` : '';
+      const squadBadgeHtml = isSquadMember && socialSettings.squadHighlight ? `<span style="color:${socialSettings.squadBorderColor};display:inline-flex;vertical-align:middle;margin-left:4px" title="Squad member">${ICON.squadBadge}</span>` : '';
+
       return `
-        <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden" data-uri="${escapeHtml(post.uri)}" data-cid="${escapeHtml(post.cid)}">
+        <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden" data-uri="${escapeHtml(post.uri)}" data-cid="${escapeHtml(post.cid)}" style="${squadBorder}">
           <div class="p-4">
             ${repostLine}
             <div class="flex items-center gap-3 mb-3">
               ${post.author.avatar ? `<img src="${escapeHtml(post.author.avatar)}" class="h-10 w-10 rounded-full cursor-pointer bsky-avatar" data-handle="${escapeHtml(post.author.handle)}" />` : '<div class="h-10 w-10 rounded-full bg-theme-surface-hover"></div>'}
               <div class="min-w-0 flex-1">
-                <button class="bsky-avatar font-medium text-sm hover:underline text-left" data-handle="${escapeHtml(post.author.handle)}">${escapeHtml(post.author.displayName)}</button>
+                <button class="bsky-avatar font-medium text-sm hover:underline text-left" data-handle="${escapeHtml(post.author.handle)}">${escapeHtml(post.author.displayName)}${squadBadgeHtml}</button>
                 <div class="text-xs text-theme-faint">@${escapeHtml(post.author.handle)}</div>
               </div>
               <time class="text-xs text-theme-faint shrink-0">${timeAgo(post.pubDate)}</time>
@@ -1205,6 +1219,11 @@ const sl = labels.social;
             allSquads = await sRes.json();
           }
           if (allSquads.length) {
+            // Build squad member lookup for highlighting
+            squadMemberHandles = new Set();
+            for (const squad of allSquads) {
+              for (const m of (squad.members || [])) { squadMemberHandles.add(m.handle); }
+            }
             const seenDids = new Set();
             const uniqueMembers = [];
             for (const squad of allSquads) {
@@ -1754,6 +1773,177 @@ const sl = labels.social;
         const hls = new Hls();
         hls.loadSource(src);
         hls.attachMedia(video);
+      }
+    });
+    observeVideos();
+  }
+
+  // ============================================================
+  // VIDEO MINI-PLAYER (scroll-away → floating PiP)
+  // ============================================================
+  let miniPlayerEl = null;
+  let miniPlayerSource = null; // the original container
+  let miniPlayerDrag = { active: false, offsetX: 0, offsetY: 0 };
+
+  function createMiniPlayer() {
+    if (miniPlayerEl) return;
+    miniPlayerEl = document.createElement('div');
+    miniPlayerEl.id = 'mini-player';
+    const savedX = socialSettings.miniPlayerX;
+    const savedY = socialSettings.miniPlayerY;
+    const defaultRight = 16;
+    const defaultBottom = 16;
+    miniPlayerEl.style.cssText = `position:fixed;z-index:9999;width:320px;aspect-ratio:16/9;border-radius:.5rem;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5);border:2px solid var(--ps-card-border,#333);background:#000;cursor:grab;transition:none;${
+      savedX != null && savedY != null
+        ? `left:${Math.min(savedX, window.innerWidth - 340)}px;top:${Math.min(savedY, window.innerHeight - 200)}px`
+        : `right:${defaultRight}px;bottom:${defaultBottom}px`
+    }`;
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '\u2715';
+    closeBtn.style.cssText = 'position:absolute;top:4px;right:4px;z-index:10;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center';
+    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeMiniPlayer(); });
+    miniPlayerEl.appendChild(closeBtn);
+    // Back-to-post button
+    const backBtn = document.createElement('button');
+    backBtn.innerHTML = '↩';
+    backBtn.title = 'Scroll to post';
+    backBtn.style.cssText = 'position:absolute;top:4px;left:4px;z-index:10;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center';
+    backBtn.addEventListener('click', (e) => { e.stopPropagation(); returnToPost(); });
+    miniPlayerEl.appendChild(backBtn);
+
+    // Drag
+    miniPlayerEl.addEventListener('mousedown', startDrag);
+    miniPlayerEl.addEventListener('touchstart', startDrag, { passive: false });
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchend', endDrag);
+
+    document.body.appendChild(miniPlayerEl);
+  }
+
+  function startDrag(e) {
+    if (e.target.tagName === 'BUTTON' || e.target.tagName === 'VIDEO' || e.target.tagName === 'IFRAME') return;
+    miniPlayerDrag.active = true;
+    miniPlayerEl.style.cursor = 'grabbing';
+    const rect = miniPlayerEl.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    miniPlayerDrag.offsetX = clientX - rect.left;
+    miniPlayerDrag.offsetY = clientY - rect.top;
+    // Remove right/bottom positioning, switch to left/top
+    miniPlayerEl.style.right = '';
+    miniPlayerEl.style.bottom = '';
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function onDrag(e) {
+    if (!miniPlayerDrag.active) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = Math.max(0, Math.min(clientX - miniPlayerDrag.offsetX, window.innerWidth - 340));
+    const y = Math.max(0, Math.min(clientY - miniPlayerDrag.offsetY, window.innerHeight - 200));
+    miniPlayerEl.style.left = x + 'px';
+    miniPlayerEl.style.top = y + 'px';
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function endDrag() {
+    if (!miniPlayerDrag.active) return;
+    miniPlayerDrag.active = false;
+    miniPlayerEl.style.cursor = 'grab';
+    // Save position
+    socialSettings.miniPlayerX = parseInt(miniPlayerEl.style.left);
+    socialSettings.miniPlayerY = parseInt(miniPlayerEl.style.top);
+    saveSocialSettings();
+  }
+
+  function closeMiniPlayer() {
+    if (!miniPlayerEl) return;
+    // Return content to original container
+    if (miniPlayerSource) {
+      const content = miniPlayerEl.querySelector('video, iframe');
+      if (content) {
+        // For iframes, restore by re-inserting; for videos, just move back
+        miniPlayerSource.innerHTML = '';
+        miniPlayerSource.appendChild(content);
+        if (content.tagName === 'VIDEO') {
+          content.style.cssText = 'width:100%;height:100%';
+          content.classList.add('w-full', 'h-full');
+        } else {
+          content.style.cssText = 'width:100%;height:100%';
+          content.classList.add('w-full', 'h-full');
+        }
+      }
+      miniPlayerSource.style.display = '';
+    }
+    miniPlayerEl.remove();
+    miniPlayerEl = null;
+    miniPlayerSource = null;
+  }
+
+  function returnToPost() {
+    if (miniPlayerSource) {
+      closeMiniPlayer();
+      miniPlayerSource.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function activateMiniPlayer(mediaContainer) {
+    if (!socialSettings.miniPlayerEnabled) return;
+    const content = mediaContainer.querySelector('video, iframe');
+    if (!content) return;
+    // For videos, only mini-player if playing
+    if (content.tagName === 'VIDEO' && content.paused) return;
+    // For iframes (YouTube), always mini-player on scroll-away
+    createMiniPlayer();
+    miniPlayerSource = mediaContainer;
+    // Move content to mini-player
+    content.style.cssText = 'width:100%;height:100%;border:none';
+    content.className = '';
+    // Insert after the close/back buttons
+    miniPlayerEl.appendChild(content);
+    mediaContainer.style.display = 'none';
+  }
+
+  function deactivateMiniPlayer(mediaContainer) {
+    if (miniPlayerSource !== mediaContainer) return;
+    closeMiniPlayer();
+  }
+
+  // Observe video/iframe containers for scroll-away
+  const miniPlayerObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!socialSettings.miniPlayerEnabled) return;
+      const container = entry.target;
+      if (!entry.isIntersecting) {
+        // Scrolled out of view — activate mini player
+        const content = container.querySelector('video, iframe');
+        if (!content) return;
+        if (content.tagName === 'VIDEO' && content.paused) return;
+        if (miniPlayerSource === container) return; // already active
+        if (miniPlayerEl) closeMiniPlayer(); // close any existing
+        activateMiniPlayer(container);
+      } else {
+        // Scrolled back into view — return to inline
+        if (miniPlayerSource === container) {
+          deactivateMiniPlayer(container);
+        }
+      }
+    });
+  }, { threshold: 0.15 });
+
+  function observeVideos() {
+    document.querySelectorAll('.aspect-video').forEach(container => {
+      if (container._miniPlayerObserved) return;
+      container._miniPlayerObserved = true;
+      miniPlayerObserver.observe(container);
+      // For HLS videos, only trigger mini-player when playing
+      const video = container.querySelector('video');
+      if (video) {
+        video.addEventListener('play', () => { video._wasPlaying = true; });
+        video.addEventListener('pause', () => { video._wasPlaying = false; });
       }
     });
   }

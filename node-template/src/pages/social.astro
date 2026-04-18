@@ -1340,12 +1340,13 @@ const sl = labels.social;
   // ============================================================
   const lightbox = document.createElement('div');
   lightbox.id = 'img-lightbox';
+  lightbox.style.cssText = 'display:none;position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.92);justify-content:center;align-items:center;cursor:zoom-out';
   lightbox.innerHTML = `
-    <button class="lb-close" aria-label="Close">✕</button>
-    <button class="lb-nav lb-prev" aria-label="Previous">‹</button>
-    <img src="" alt="" />
-    <button class="lb-nav lb-next" aria-label="Next">›</button>
-    <div class="lb-counter"></div>`;
+    <button style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#fff;font-size:1.75rem;cursor:pointer;opacity:.8;z-index:2;line-height:1" aria-label="Close" data-lb-close>✕</button>
+    <button style="position:absolute;left:1rem;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:none;font-size:2.5rem;padding:.1rem .7rem;border-radius:.5rem;cursor:pointer;opacity:.8;z-index:2;line-height:1" aria-label="Previous" data-lb-prev>‹</button>
+    <img src="" alt="" style="max-width:95vw;max-height:95vh;object-fit:contain;border-radius:.25rem" />
+    <button style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:none;font-size:2.5rem;padding:.1rem .7rem;border-radius:.5rem;cursor:pointer;opacity:.8;z-index:2;line-height:1" aria-label="Next" data-lb-next>›</button>
+    <div style="position:absolute;bottom:1rem;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.7);font-size:.8rem" data-lb-counter></div>`;
   document.body.appendChild(lightbox);
 
   let lbImages = [];
@@ -1355,7 +1356,7 @@ const sl = labels.social;
     lbImages = images;
     lbIndex = startIndex || 0;
     updateLightbox();
-    lightbox.classList.add('active');
+    lightbox.style.display = 'flex';
     document.body.style.overflow = 'hidden';
   }
 
@@ -1363,25 +1364,25 @@ const sl = labels.social;
     const img = lightbox.querySelector('img');
     img.src = lbImages[lbIndex].src;
     img.alt = lbImages[lbIndex].alt || '';
-    const counter = lightbox.querySelector('.lb-counter');
+    const counter = lightbox.querySelector('[data-lb-counter]');
     counter.textContent = lbImages.length > 1 ? `${lbIndex + 1} / ${lbImages.length}` : '';
-    lightbox.querySelector('.lb-prev').style.display = lbImages.length > 1 ? '' : 'none';
-    lightbox.querySelector('.lb-next').style.display = lbImages.length > 1 ? '' : 'none';
+    lightbox.querySelector('[data-lb-prev]').style.display = lbImages.length > 1 ? '' : 'none';
+    lightbox.querySelector('[data-lb-next]').style.display = lbImages.length > 1 ? '' : 'none';
   }
 
   function closeLightbox() {
-    lightbox.classList.remove('active');
+    lightbox.style.display = 'none';
     document.body.style.overflow = '';
   }
 
   lightbox.addEventListener('click', (e) => {
-    if (e.target === lightbox || e.target === lightbox.querySelector('img')) closeLightbox();
+    if (e.target === lightbox) closeLightbox();
   });
-  lightbox.querySelector('.lb-close').addEventListener('click', closeLightbox);
-  lightbox.querySelector('.lb-prev').addEventListener('click', (e) => { e.stopPropagation(); lbIndex = (lbIndex - 1 + lbImages.length) % lbImages.length; updateLightbox(); });
-  lightbox.querySelector('.lb-next').addEventListener('click', (e) => { e.stopPropagation(); lbIndex = (lbIndex + 1) % lbImages.length; updateLightbox(); });
+  lightbox.querySelector('[data-lb-close]').addEventListener('click', (e) => { e.stopPropagation(); closeLightbox(); });
+  lightbox.querySelector('[data-lb-prev]').addEventListener('click', (e) => { e.stopPropagation(); lbIndex = (lbIndex - 1 + lbImages.length) % lbImages.length; updateLightbox(); });
+  lightbox.querySelector('[data-lb-next]').addEventListener('click', (e) => { e.stopPropagation(); lbIndex = (lbIndex + 1) % lbImages.length; updateLightbox(); });
   document.addEventListener('keydown', (e) => {
-    if (!lightbox.classList.contains('active')) return;
+    if (lightbox.style.display !== 'flex') return;
     if (e.key === 'Escape') closeLightbox();
     if (e.key === 'ArrowLeft') { lbIndex = (lbIndex - 1 + lbImages.length) % lbImages.length; updateLightbox(); }
     if (e.key === 'ArrowRight') { lbIndex = (lbIndex + 1) % lbImages.length; updateLightbox(); }
@@ -1719,7 +1720,7 @@ const sl = labels.social;
   }
 </script>
 
-<style>
+<style is:global>
   .active-tab, .active-pill {
     background-color: var(--ps-surface-hover);
   }
@@ -1741,34 +1742,4 @@ const sl = labels.social;
   }
   /* Clickable post images */
   .post-img { cursor: zoom-in; }
-  /* Image lightbox */
-  #img-lightbox {
-    display: none; position: fixed; inset: 0; z-index: 80;
-    background: rgba(0,0,0,.9); justify-content: center; align-items: center;
-    cursor: zoom-out;
-  }
-  #img-lightbox.active { display: flex; }
-  #img-lightbox img {
-    max-width: 95vw; max-height: 95vh; object-fit: contain;
-    border-radius: .25rem;
-  }
-  #img-lightbox .lb-nav {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    background: rgba(0,0,0,.5); color: #fff; border: none;
-    font-size: 2rem; padding: .25rem .75rem; border-radius: .5rem;
-    cursor: pointer; opacity: .7; transition: opacity .2s;
-  }
-  #img-lightbox .lb-nav:hover { opacity: 1; }
-  #img-lightbox .lb-prev { left: 1rem; }
-  #img-lightbox .lb-next { right: 1rem; }
-  #img-lightbox .lb-close {
-    position: absolute; top: 1rem; right: 1rem;
-    background: none; border: none; color: #fff; font-size: 1.5rem;
-    cursor: pointer; opacity: .7; transition: opacity .2s;
-  }
-  #img-lightbox .lb-close:hover { opacity: 1; }
-  #img-lightbox .lb-counter {
-    position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%);
-    color: rgba(255,255,255,.7); font-size: .8rem;
-  }
 </style>

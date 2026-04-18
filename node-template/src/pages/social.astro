@@ -2160,10 +2160,10 @@ const sl = labels.social;
           const y = Math.sin(angle) * radius;
           return `
           <div class="absolute squad-member-avatar" data-member-id="${m.id}" data-handle="${escapeHtml(m.handle)}" style="transform:translate(${x}px,${y}px);z-index:1">
-            <div class="relative group cursor-pointer">
+            <div class="relative group cursor-pointer" style="z-index:1" onmouseenter="this.closest('.squad-member-avatar').style.zIndex=20" onmouseleave="this.closest('.squad-member-avatar').style.zIndex=1">
               <div class="activity-dot absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-theme-card bg-theme-surface-hover z-10" data-member-id="${m.id}"></div>
               ${m.avatarUrl ? `<img src="${escapeHtml(m.avatarUrl)}" alt="${escapeHtml(m.displayName || m.handle)}" class="w-14 h-14 rounded-full border-2 border-theme-input-border hover:border-theme-card-hover transition" />` : `<div class="w-14 h-14 rounded-full border-2 border-theme-input-border bg-theme-input-bg flex items-center justify-center text-theme-muted text-sm">${escapeHtml((m.handle || '?')[0].toUpperCase())}</div>`}
-              <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-theme-faint whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none">${escapeHtml(m.displayName || m.handle)}</div>
+              <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-theme-faint whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none" style="z-index:30">${escapeHtml(m.displayName || m.handle)}</div>
             </div>
           </div>`;
         }).join('')}
@@ -2181,7 +2181,7 @@ const sl = labels.social;
         `).join('')}
       </div>
       ${squad.members.length ? `
-      <div class="mt-5 space-y-3">
+      <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <button class="check-activity-btn w-full rounded bg-theme-input-bg py-2 text-sm hover:bg-theme-surface-hover transition" data-squad-id="${squad.id}">Check Activity</button>
           <div class="flex items-center gap-2 mt-2 px-1">

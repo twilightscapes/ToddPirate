@@ -1197,6 +1197,34 @@ const sl = labels.social;
         }
       }
 
+      // Fetch squad member posts and merge into timeline
+      if (session?.accessJwt && !append) {
+        try {
+          if (!allSquads.length && token) {
+            const sRes = await fetchTimeout(`${hubUrl}/api/bluesky-feed/squads`, { headers: { Authorization: `Bearer ${token}` } });
+            allSquads = await sRes.json();
+          }
+          if (allSquads.length) {
+            const seenDids = new Set();
+            const uniqueMembers = [];
+            for (const squad of allSquads) {
+              for (const m of (squad.members || [])) {
+                const key = m.did || m.handle;
+                if (!seenDids.has(key)) { seenDids.add(key); uniqueMembers.push(m); }
+              }
+            }
+            if (uniqueMembers.length) {
+              const squadPosts = await fetchSquadFeedDirect(uniqueMembers);
+              // Deduplicate — skip posts already in timeline
+              const existingUris = new Set(allPosts.map(p => p.uri));
+              allPosts.push(...squadPosts.filter(p => !existingUris.has(p.uri)));
+            }
+          }
+        } catch (err) {
+          console.error('[PS] Squad feed merge error:', err.message);
+        }
+      }
+
       // Fetch Pirate Social timeline (RSS + pirate posts) — only on first load or if filter is 'pirate'
       if (token && (!append || currentFilter === 'pirate' || currentFilter === 'all')) {
         try {

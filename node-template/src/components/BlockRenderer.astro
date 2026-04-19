@@ -7,6 +7,7 @@ import GalleryBlock from './blocks/GalleryBlock.astro';
 import TextBlock from './blocks/TextBlock.astro';
 import ImageBlock from './blocks/ImageBlock.astro';
 import LocationBlock from './blocks/LocationBlock.astro';
+import FaqBlock from './blocks/FaqBlock.astro';
 
 const { blocks = [] } = Astro.props;
 
@@ -23,6 +24,7 @@ const hasLightbox = blocks.some((b: any) => b.type === 'gallery' || (b.type === 
     {block.type === 'text' && <TextBlock {...block} />}
     {block.type === 'image' && <ImageBlock {...block} />}
     {block.type === 'location' && <LocationBlock {...block} />}
+    {block.type === 'faq' && <FaqBlock {...block} />}
   </>
 ))}
 

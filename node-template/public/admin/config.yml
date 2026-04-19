@@ -267,6 +267,26 @@ collections:
               - { label: "Address / Description", name: address, widget: text, required: false }
               - { label: "Map Embed URL", name: mapUrl, widget: string, required: false, hint: "Google Maps embed URL (from Share > Embed a map > copy the src URL)" }
 
+          - label: "FAQ"
+            name: faq
+            widget: object
+            fields:
+              - { label: "Heading", name: heading, widget: string, required: false, default: "Frequently Asked Questions" }
+              - { label: "Description", name: description, widget: text, required: false, hint: "Optional intro text above the FAQ items" }
+              - label: "Layout"
+                name: layout
+                widget: select
+                options:
+                  - { label: "Narrow (centered)", value: "narrow" }
+                  - { label: "Full Width", value: "full" }
+                default: "narrow"
+              - label: "Questions"
+                name: items
+                widget: list
+                fields:
+                  - { label: "Question", name: question, widget: string }
+                  - { label: "Answer", name: answer, widget: markdown }
+
   - name: site-settings
     label: Site Settings
     files:

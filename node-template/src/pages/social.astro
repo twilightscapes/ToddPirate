@@ -93,6 +93,10 @@ const sl = labels.social;
     <!-- Pending delayed posts (typo-catch mode) -->
     <div id="pending-posts" class="mb-4 space-y-2"></div>
 
+    <button id="floating-compose-btn" type="button" class="hidden fixed bottom-6 right-6 z-40 rounded-full bg-theme-primary text-white shadow-lg hover:bg-theme-primary-hover transition px-4 py-3 text-sm font-medium">
+      ✍️ New Post
+    </button>
+
     <!-- Main content -->
     <div id="feed-container" class="space-y-6">
       <div class="text-center text-theme-faint py-12">
@@ -433,7 +437,7 @@ const sl = labels.social;
       text,
       createdAt: new Date().toISOString(),
     };
-    // Parse facets (links, mentions)
+    // Parse facets (links, mentions, hashtags)
     const facets = [];
     const urls = [];
     // Detect full URLs
@@ -471,6 +475,14 @@ const sl = labels.social;
           });
         }
       } catch {}
+    }
+    // Detect hashtags
+    const tagRegex = /(?<=^|\s)#([A-Za-z0-9_][A-Za-z0-9_-]{0,63})/g;
+    while ((m = tagRegex.exec(text)) !== null) {
+      facets.push({
+        index: { byteStart: new TextEncoder().encode(text.slice(0, m.index)).length, byteEnd: new TextEncoder().encode(text.slice(0, m.index + m[0].length)).length },
+        features: [{ '$type': 'app.bsky.richtext.facet#tag', tag: m[1] }],
+      });
     }
     if (facets.length) record.facets = facets;
 
@@ -613,7 +625,15 @@ const sl = labels.social;
       }, 600);
     });
 
-    return () => currentCard; // getter for the current card
+    const getCard = () => currentCard;
+    getCard.clear = () => {
+      currentCard = null;
+      lastCheckedUrl = null;
+      strippedUrl = false;
+      clearTimeout(fetchTimer);
+      previewContainer.innerHTML = '';
+    };
+    return getCard;
   }
 
   // ============================================================
@@ -738,8 +758,29 @@ const sl = labels.social;
 
   function formatText(str) {
     if (!str) return '';
-    let text = str.replace(/&#xA;/gi, '\n').replace(/\[contains quote post or other embedded content\]/gi, '').trim();
-    return escapeHtml(text).replace(/\n/g, '<br>');
+    const text = str.replace(/&#xA;/gi, '\n').replace(/\[contains quote post or other embedded content\]/gi, '').trim();
+    const tokenRegex = /https?:\/\/[^\s)>\]]+|(?<=^|\s)@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?|(?<=^|\s)#[A-Za-z0-9_][A-Za-z0-9_-]{0,63}/g;
+    let html = '';
+    let lastIndex = 0;
+    for (const match of text.matchAll(tokenRegex)) {
+      const token = match[0];
+      const index = match.index ?? 0;
+      html += escapeHtml(text.slice(lastIndex, index));
+      if (token.startsWith('http')) {
+        html += `<a href="${escapeHtml(token)}" target="_blank" rel="noopener noreferrer" class="text-theme-primary hover:underline">${escapeHtml(token)}</a>`;
+      } else if (token.startsWith('@')) {
+        const handle = token.slice(1);
+        html += `<a href="https://bsky.app/profile/${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer" class="text-theme-primary hover:underline">${escapeHtml(token)}</a>`;
+      } else if (token.startsWith('#')) {
+        const tag = token.slice(1);
+        html += `<a href="https://bsky.app/hashtag/${encodeURIComponent(tag)}" target="_blank" rel="noopener noreferrer" class="text-theme-primary hover:underline">${escapeHtml(token)}</a>`;
+      } else {
+        html += escapeHtml(token);
+      }
+      lastIndex = index + token.length;
+    }
+    html += escapeHtml(text.slice(lastIndex));
+    return html.replace(/\n/g, '<br>');
   }
 
   function timeAgo(dateStr) {
@@ -1291,6 +1332,8 @@ const sl = labels.social;
     }
     const composeBox = document.getElementById('compose-box');
     if (composeBox) composeBox.style.display = (currentTab === 'timeline' && bskySession?.accessJwt) ? '' : 'none';
+    const floatingComposeBtn = document.getElementById('floating-compose-btn');
+    if (floatingComposeBtn) floatingComposeBtn.classList.toggle('hidden', !bskySession?.accessJwt);
   }
 
   function loadCurrentTab() {
@@ -2932,6 +2975,7 @@ const sl = labels.social;
   const postDelay = document.getElementById('post-delay');
   const scheduleDatetimeInput = document.getElementById('schedule-datetime');
   const pendingPostsContainer = document.getElementById('pending-posts');
+  const floatingComposeBtn = document.getElementById('floating-compose-btn');
   let pendingCountdowns = {};
   let getComposeCard = () => null;
   if (composeInput && composeSend) {
@@ -2955,7 +2999,22 @@ const sl = labels.social;
           scheduleDatetimeInput.classList.add('hidden');
           scheduleDatetimeInput.value = '';
         }
-        composeSend.textContent = (postDelay.value === '0') ? 'Post' : 'Post';
+        composeSend.textContent = 'Post';
+      });
+    }
+
+    if (floatingComposeBtn) {
+      floatingComposeBtn.addEventListener('click', () => {
+        const timelineBtn = document.querySelector('.tab-btn[data-tab="timeline"]');
+        if (timelineBtn) {
+          currentTab = 'timeline';
+          setActiveTab(timelineBtn);
+          updateTabUI();
+          loadCurrentTab();
+        }
+        const composeBox = document.getElementById('compose-box');
+        if (composeBox) composeBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => composeInput.focus(), 250);
       });
     }
 
@@ -2973,7 +3032,7 @@ const sl = labels.social;
           await createBskyRecord(text, null, getComposeCard());
           composeInput.value = '';
           composeCount.textContent = '0/300';
-          composeLinkPreview.innerHTML = '';
+          getComposeCard.clear?.();
           composeSend.textContent = 'Post';
           composeSend.disabled = true;
           composeSend.style.opacity = '.5';
@@ -3009,7 +3068,7 @@ const sl = labels.social;
           }
           composeInput.value = '';
           composeCount.textContent = '0/300';
-          composeLinkPreview.innerHTML = '';
+          getComposeCard.clear?.();
           composeSend.textContent = 'Post';
           composeSend.disabled = true;
           composeSend.style.opacity = '.5';

@@ -212,6 +212,8 @@ const sl = labels.social;
       btn.classList.toggle('text-red-500', inList);
       btn.classList.toggle('text-white', !inList);
     });
+    // Also update the wrapper heart if it matches
+    if (typeof syncWrapperHeart === 'function') syncWrapperHeart();
     // Re-render watchlist if Video tab is active
     if (currentTab === 'youtube') { const wlEl = document.getElementById('yt-watchlist-content'); if (wlEl) renderWatchlistItems(); }
   }
@@ -2686,6 +2688,39 @@ const sl = labels.social;
     if (ytPositionRAF) { cancelAnimationFrame(ytPositionRAF); ytPositionRAF = null; window.__ytPositionRAF = null; }
   }
 
+  // Persistent heart button on the YouTube wrapper — stays above the iframe
+  function updateWrapperHeart(videoId, title, thumbnail) {
+    if (!ytWrapper) return;
+    let heart = ytWrapper.querySelector('.yt-wrapper-heart');
+    if (!heart) {
+      heart = document.createElement('button');
+      heart.className = 'yt-wrapper-heart';
+      heart.style.cssText = 'position:absolute;top:8px;right:8px;z-index:50;padding:6px;border-radius:9999px;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);border:none;cursor:pointer;transition:background 0.2s,color 0.2s;color:#fff;display:flex;align-items:center;justify-content:center';
+      heart.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+      heart.addEventListener('mouseenter', () => { heart.style.background = 'rgba(0,0,0,0.7)'; });
+      heart.addEventListener('mouseleave', () => { heart.style.background = 'rgba(0,0,0,0.5)'; });
+      heart.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleWatchlist(heart._vidId, heart._vidTitle, heart._vidThumb);
+        syncWrapperHeart();
+      });
+      ytWrapper.appendChild(heart);
+    }
+    heart._vidId = videoId;
+    heart._vidTitle = title || '';
+    heart._vidThumb = thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    heart.style.display = 'flex';
+    syncWrapperHeart();
+  }
+
+  function syncWrapperHeart() {
+    const heart = ytWrapper?.querySelector('.yt-wrapper-heart');
+    if (!heart || !heart._vidId) return;
+    const inList = isInWatchlist(heart._vidId);
+    heart.querySelector('svg').setAttribute('fill', inList ? 'currentColor' : 'none');
+    heart.style.color = inList ? '#ef4444' : '#fff';
+  }
+
   function playYTVideo(container, videoId) {
     pauseAllMedia(null);
     const iframe = getOrCreateYTIframe();
@@ -2694,6 +2729,11 @@ const sl = labels.social;
     if (ytActiveContainer && ytActiveContainer !== container) {
       returnYTPlaceholder(ytActiveContainer);
     }
+
+    // Grab heart metadata from the container before destroying innerHTML
+    const heartBtn = container.querySelector('.vid-heart-btn');
+    const heartTitle = heartBtn?.dataset.vidTitle || '';
+    const heartThumb = heartBtn?.dataset.vidThumb || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
     // Save original placeholder content & hide it (wrapper overlays it)
     if (!container._ytPlaceholderHTML) {
@@ -2709,6 +2749,9 @@ const sl = labels.social;
     ytWrapper.style.borderRadius = '0';
     ytPositionOver(container);
     ytStartTracking();
+
+    // Show floating heart on the wrapper
+    updateWrapperHeart(videoId, heartTitle, heartThumb);
 
     // Load video: first time sets src; subsequent use postMessage (no reload, no ads)
     if (!iframe._firstLoaded) {
@@ -2757,6 +2800,9 @@ const sl = labels.social;
       ytWrapper.style.opacity = '0';
       ytWrapper.style.zIndex = '-1';
       ytWrapper.style.pointerEvents = 'none';
+      // Hide wrapper heart
+      const wh = ytWrapper.querySelector('.yt-wrapper-heart');
+      if (wh) wh.style.display = 'none';
     }
     ytStopTracking();
   }

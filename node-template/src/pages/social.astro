@@ -330,9 +330,13 @@ const sl = labels.social;
   }
 
   async function searchBskyFeeds(query, cursor) {
+    if (query) {
+      const params = { query, limit: '25' };
+      if (cursor) params.cursor = cursor;
+      return bskyGet('app.bsky.unspecced.getPopularFeedGenerators', params, false);
+    }
     const params = { limit: '25' };
     if (cursor) params.cursor = cursor;
-    if (query) params.q = query;
     return bskyGet('app.bsky.feed.getSuggestedFeeds', params, true);
   }
 

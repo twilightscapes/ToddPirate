@@ -2016,31 +2016,32 @@ const sl = labels.social;
 
   function closeMiniPlayer() {
     if (!miniPlayerEl) return;
-    // Stop playback
     const mediaWrap = document.getElementById('mini-player-media');
-    const content = mediaWrap?.querySelector('video, iframe');
-    if (content) {
-      if (content.tagName === 'VIDEO') {
+    const isYT = miniPlayerSource && ytActiveContainer === miniPlayerSource;
+
+    if (isYT) {
+      // YouTube: don't move iframe — just pause and reposition wrapper back, then hide
+      pauseYTPlayer();
+      if (ytSharedIframe) ytSharedIframe._userActivated = false;
+      hideYTWrapper();
+      if (ytWrapper) ytWrapper._miniPlayerMode = false;
+      miniPlayerSource.style.display = '';
+    } else {
+      // HLS/native video: move content back to original container
+      const content = mediaWrap?.querySelector('video');
+      if (content) {
         content.pause();
         content._wasPlaying = false;
-      } else if (content.tagName === 'IFRAME') {
-        // Pause via postMessage — never clear src, preserves session
-        pauseYTPlayer();
-        content._userActivated = false;
+        if (miniPlayerSource) {
+          miniPlayerSource.innerHTML = '';
+          miniPlayerSource.appendChild(content);
+          content.style.cssText = 'width:100%;height:100%';
+          content.classList.add('w-full', 'h-full');
+          miniPlayerSource.style.display = '';
+        }
       }
     }
-    // Return content to original container
-    if (miniPlayerSource && content) {
-      miniPlayerSource.innerHTML = '';
-      miniPlayerSource.appendChild(content);
-      content.style.cssText = 'width:100%;height:100%';
-      content.classList.add('w-full', 'h-full');
-      if (content.tagName === 'IFRAME') {
-        // Re-add overlay so mini-player only triggers on next user click
-        addIframeOverlay(miniPlayerSource, content);
-      }
-      miniPlayerSource.style.display = '';
-    }
+
     miniPlayerEl.remove();
     miniPlayerEl = null;
     miniPlayerSource = null;
@@ -2048,31 +2049,83 @@ const sl = labels.social;
 
   function returnToPost() {
     if (miniPlayerSource) {
+      const source = miniPlayerSource;
       closeMiniPlayer();
-      miniPlayerSource.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      source.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
   function activateMiniPlayer(mediaContainer) {
     if (!socialSettings.miniPlayerEnabled) return;
-    const content = mediaContainer.querySelector('video, iframe');
+    const isYT = mediaContainer === ytActiveContainer;
+    const content = isYT ? ytSharedIframe : mediaContainer.querySelector('video');
     if (!content) return;
-    // For videos, only mini-player if playing
-    if (content.tagName === 'VIDEO' && content.paused) return;
-    // For iframes (YouTube), always mini-player on scroll-away
+    // For native videos, only mini-player if playing
+    if (!isYT && content.tagName === 'VIDEO' && content.paused) return;
+
     createMiniPlayer();
     miniPlayerSource = mediaContainer;
-    // Move content to mini-player media area
-    const mediaWrap = document.getElementById('mini-player-media');
-    content.style.cssText = 'width:100%;height:100%;border:none';
-    content.className = '';
-    mediaWrap.appendChild(content);
-    mediaContainer.style.display = 'none';
+
+    if (isYT) {
+      // YouTube: reposition the wrapper to the mini-player media area instead of moving iframe
+      const mediaWrap = document.getElementById('mini-player-media');
+      ytStopTracking(); // stop following the container
+      ytWrapper._miniPlayerMode = true;
+      // Position wrapper inside the mini-player by tracking mini-player-media
+      function updateMiniPos() {
+        if (!miniPlayerEl || !ytWrapper._miniPlayerMode) return;
+        const rect = mediaWrap.getBoundingClientRect();
+        ytWrapper.style.left = rect.left + 'px';
+        ytWrapper.style.top = rect.top + 'px';
+        ytWrapper.style.width = rect.width + 'px';
+        ytWrapper.style.height = rect.height + 'px';
+        ytWrapper.style.display = '';
+        ytWrapper.style.zIndex = '10000';
+        ytPositionRAF = requestAnimationFrame(updateMiniPos);
+      }
+      ytPositionRAF = requestAnimationFrame(updateMiniPos);
+      mediaContainer.style.display = 'none';
+    } else {
+      // Native video: move into mini-player as before
+      const mediaWrap = document.getElementById('mini-player-media');
+      content.style.cssText = 'width:100%;height:100%;border:none';
+      content.className = '';
+      mediaWrap.appendChild(content);
+      mediaContainer.style.display = 'none';
+    }
   }
 
   function deactivateMiniPlayer(mediaContainer) {
     if (miniPlayerSource !== mediaContainer) return;
-    closeMiniPlayer();
+    const isYT = mediaContainer === ytActiveContainer;
+
+    if (isYT && ytWrapper) {
+      // YouTube: reposition wrapper back over the inline container
+      ytWrapper._miniPlayerMode = false;
+      ytWrapper.style.zIndex = '40';
+      mediaContainer.style.display = '';
+      ytPositionOver(mediaContainer);
+      ytStartTracking();
+    }
+
+    // Remove mini-player chrome (but don't pause/move content for YT)
+    if (miniPlayerEl) {
+      if (!isYT) {
+        // For native video, move content back
+        const mediaWrap = document.getElementById('mini-player-media');
+        const content = mediaWrap?.querySelector('video');
+        if (content && miniPlayerSource) {
+          miniPlayerSource.innerHTML = '';
+          miniPlayerSource.appendChild(content);
+          content.style.cssText = 'width:100%;height:100%';
+          content.classList.add('w-full', 'h-full');
+          miniPlayerSource.style.display = '';
+        }
+      }
+      miniPlayerEl.remove();
+      miniPlayerEl = null;
+    }
+    miniPlayerSource = null;
   }
 
   // Observe video/iframe containers for scroll-away
@@ -2081,24 +2134,23 @@ const sl = labels.social;
       const container = entry.target;
       if (!entry.isIntersecting) {
         // Scrolled out of view
-        const content = container.querySelector('video, iframe');
-        if (!content) return;
+        const isYT = container === ytActiveContainer;
+        const content = isYT ? ytSharedIframe : container.querySelector('video');
+        if (!content && !isYT) return;
 
-        // If mini-player is disabled, pause/stop videos when scrolled away
+        // If mini-player is disabled, pause/stop when scrolled away
         if (!socialSettings.miniPlayerEnabled) {
-          if (content.tagName === 'VIDEO' && !content.paused) content.pause();
-          if (content.tagName === 'IFRAME' && content._userActivated) {
-            // Pause via postMessage — never reload the iframe
+          if (!isYT && content?.tagName === 'VIDEO' && !content.paused) content.pause();
+          if (isYT && ytSharedIframe?._userActivated) {
             pauseYTPlayer();
-            content._userActivated = false;
-            addIframeOverlay(container, content);
+            hideYTWrapper();
           }
           return;
         }
 
         // Mini-player enabled — activate if user was watching
-        if (content.tagName === 'VIDEO' && content.paused) return;
-        if (content.tagName === 'IFRAME' && !content._userActivated) return;
+        if (!isYT && content?.tagName === 'VIDEO' && content.paused) return;
+        if (isYT && !ytSharedIframe?._userActivated) return;
         if (miniPlayerSource === container) return; // already active
         if (miniPlayerEl) closeMiniPlayer(); // close any existing
         activateMiniPlayer(container);
@@ -2130,9 +2182,6 @@ const sl = labels.social;
     // Pause the shared YT player if it's not the exception
     if (ytSharedIframe && ytSharedIframe !== except && ytSharedIframe._userActivated) {
       pauseYTPlayer();
-      if (ytActiveContainer) {
-        addIframeOverlay(ytActiveContainer, ytSharedIframe);
-      }
     }
   }
 
@@ -2148,32 +2197,37 @@ const sl = labels.social;
         video.addEventListener('play', () => { video._wasPlaying = true; pauseAllMedia(video); });
         video.addEventListener('pause', () => { video._wasPlaying = false; });
       }
-      // For iframes (YouTube), add a click overlay to detect user interaction
-      const iframe = container.querySelector('iframe');
-      if (iframe) {
-        addIframeOverlay(container, iframe);
-      }
     });
   }
 
   // ============================================================
-  // SINGLE SHARED YOUTUBE PLAYER — never destroy the iframe
-  // Keeps the same session so ads only play once (if at all)
+  // SINGLE SHARED YOUTUBE PLAYER — never move the iframe in the DOM
+  // Moving iframes between DOM parents causes browser to reload them (= new ads).
+  // Instead we keep the iframe in a permanent fixed-position wrapper and reposition
+  // it visually over whichever container is active.
   // ============================================================
-  let ytSharedIframe = null; // the single iframe element, reused forever
-  let ytActiveContainer = null; // which .aspect-video currently hosts it
-  let ytApiReady = false; // true once YouTube player API responds
-  let ytPendingVideoId = null; // queued video to load once API is ready
+  let ytSharedIframe = null;
+  let ytWrapper = null; // fixed-position wrapper, always in document.body
+  let ytActiveContainer = null; // which .aspect-video is logically active
+  let ytApiReady = false;
+  let ytPendingVideoId = null;
   const ytOrigin = window.location.origin;
+  let ytPositionRAF = null;
 
   function getOrCreateYTIframe() {
     if (ytSharedIframe) return ytSharedIframe;
+
+    // Create permanent wrapper — stays in body forever
+    ytWrapper = document.createElement('div');
+    ytWrapper.style.cssText = 'position:fixed;z-index:40;pointer-events:auto;display:none;overflow:hidden;border-radius:0';
+    document.body.appendChild(ytWrapper);
+
     ytSharedIframe = document.createElement('iframe');
     ytSharedIframe.setAttribute('frameborder', '0');
     ytSharedIframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
     ytSharedIframe.setAttribute('allowfullscreen', '');
-    ytSharedIframe.className = 'w-full h-full';
     ytSharedIframe.style.cssText = 'width:100%;height:100%;border:none';
+    ytWrapper.appendChild(ytSharedIframe);
 
     // Listen for YouTube player postMessage events
     window.addEventListener('message', (e) => {
@@ -2181,7 +2235,6 @@ const sl = labels.social;
       let data;
       try { data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
 
-      // Track player state: 1=playing, 2=paused, 0=ended, 3=buffering
       if (data.event === 'onStateChange') {
         const state = data.info;
         if (state === 1 || state === 3) {
@@ -2191,10 +2244,8 @@ const sl = labels.social;
         }
       }
 
-      // Detect when API is ready (YouTube sends initialDelivery after listening handshake)
       if (data.event === 'initialDelivery' || data.event === 'onReady') {
         ytApiReady = true;
-        // If there's a pending video queued, load it now
         if (ytPendingVideoId) {
           const vid = ytPendingVideoId;
           ytPendingVideoId = null;
@@ -2214,7 +2265,6 @@ const sl = labels.social;
   }
 
   function ytHandshake() {
-    // Send the listening handshake and subscribe to state change events
     if (!ytSharedIframe?.contentWindow) return;
     try {
       ytSharedIframe.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
@@ -2222,40 +2272,67 @@ const sl = labels.social;
     ytSendCommand('addEventListener', ['onStateChange']);
   }
 
+  // Position the fixed wrapper over a target element
+  function ytPositionOver(target) {
+    if (!ytWrapper || !target) return;
+    const rect = target.getBoundingClientRect();
+    ytWrapper.style.left = rect.left + 'px';
+    ytWrapper.style.top = rect.top + 'px';
+    ytWrapper.style.width = rect.width + 'px';
+    ytWrapper.style.height = rect.height + 'px';
+    ytWrapper.style.display = '';
+  }
+
+  // Continuously reposition over the active container (handles scroll)
+  function ytStartTracking() {
+    ytStopTracking();
+    function update() {
+      if (ytActiveContainer && ytWrapper && ytWrapper.style.display !== 'none' && !ytWrapper._miniPlayerMode) {
+        ytPositionOver(ytActiveContainer);
+      }
+      ytPositionRAF = requestAnimationFrame(update);
+    }
+    ytPositionRAF = requestAnimationFrame(update);
+  }
+
+  function ytStopTracking() {
+    if (ytPositionRAF) { cancelAnimationFrame(ytPositionRAF); ytPositionRAF = null; }
+  }
+
   function playYTVideo(container, videoId) {
     pauseAllMedia(null);
     const iframe = getOrCreateYTIframe();
 
-    // If currently in another container, return placeholder to that container
+    // If another container was active, restore its placeholder
     if (ytActiveContainer && ytActiveContainer !== container) {
       returnYTPlaceholder(ytActiveContainer);
     }
 
-    // Save original placeholder content
+    // Save original placeholder content & hide it (wrapper overlays it)
     if (!container._ytPlaceholderHTML) {
       container._ytPlaceholderHTML = container.innerHTML;
     }
-
-    // Move iframe into this container
-    container.innerHTML = '';
-    container.appendChild(iframe);
+    container.innerHTML = '<div style="width:100%;aspect-ratio:16/9;background:#000"></div>';
     container.style.cursor = '';
     container.classList.remove('yt-placeholder');
     ytActiveContainer = container;
 
-    // Load video: first time sets src to bootstrap the player; subsequent use postMessage
+    // Position wrapper over this container
+    ytWrapper._miniPlayerMode = false;
+    ytWrapper.style.borderRadius = '0';
+    ytPositionOver(container);
+    ytStartTracking();
+
+    // Load video: first time sets src; subsequent use postMessage (no reload, no ads)
     if (!iframe._firstLoaded) {
       iframe._firstLoaded = true;
       ytApiReady = false;
       ytPendingVideoId = null;
       iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1&origin=${encodeURIComponent(ytOrigin)}`;
-      // Once iframe loads, do the listening handshake
       iframe.addEventListener('load', () => { setTimeout(ytHandshake, 300); }, { once: true });
     } else if (ytApiReady) {
-      // API is ready — switch video via postMessage (no iframe reload, no ads)
       ytSendCommand('loadVideoById', [videoId]);
     } else {
-      // API not ready yet — queue it
       ytPendingVideoId = videoId;
     }
 
@@ -2270,10 +2347,6 @@ const sl = labels.social;
 
   function returnYTPlaceholder(container) {
     if (!container) return;
-    // Remove iframe from container (don't destroy it — keep reference)
-    if (ytSharedIframe && ytSharedIframe.parentElement === container) {
-      container.removeChild(ytSharedIframe);
-    }
     // Restore the thumbnail placeholder
     if (container._ytPlaceholderHTML) {
       container.innerHTML = container._ytPlaceholderHTML;
@@ -2281,6 +2354,11 @@ const sl = labels.social;
       container.classList.add('yt-placeholder');
     }
     if (ytActiveContainer === container) ytActiveContainer = null;
+  }
+
+  function hideYTWrapper() {
+    if (ytWrapper) { ytWrapper.style.display = 'none'; }
+    ytStopTracking();
   }
 
   function pauseYTPlayer() {

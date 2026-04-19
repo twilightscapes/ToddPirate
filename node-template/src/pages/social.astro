@@ -174,6 +174,40 @@ const sl = labels.social;
   let youtubeWatchlist = [];
   let showYouTubeInFeed = true;
 
+  // Load watchlist from localStorage
+  try { const wl = JSON.parse(localStorage.getItem('ps_yt_watchlist')); if (Array.isArray(wl)) youtubeWatchlist = wl; } catch {}
+  function saveWatchlist() { localStorage.setItem('ps_yt_watchlist', JSON.stringify(youtubeWatchlist)); }
+  function isInWatchlist(videoId) { return youtubeWatchlist.some(v => v.videoId === videoId); }
+  function ytHeartBtn(videoId, title, thumbnail) {
+    const filled = isInWatchlist(videoId);
+    return `<button class="yt-heart-btn absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition ${filled ? 'text-red-500' : 'text-white/70'}" data-yt-id="${escapeHtml(videoId)}" data-yt-title="${escapeHtml(title || '')}" data-yt-thumb="${escapeHtml(thumbnail || '')}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>`;
+  }
+  function initYTHeartBtns() {
+    document.querySelectorAll('.yt-heart-btn:not([data-heart-bound])').forEach(btn => {
+      btn.dataset.heartBound = '1';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleWatchlist(btn.dataset.ytId, btn.dataset.ytTitle, btn.dataset.ytThumb);
+      });
+    });
+  }
+  function toggleWatchlist(videoId, title, thumbnail) {
+    if (isInWatchlist(videoId)) {
+      youtubeWatchlist = youtubeWatchlist.filter(v => v.videoId !== videoId);
+    } else {
+      youtubeWatchlist.push({ videoId, title: title || '', thumbnail: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, addedAt: Date.now() });
+    }
+    saveWatchlist();
+    // Update all heart icons for this video
+    document.querySelectorAll(`.yt-heart-btn[data-yt-id="${videoId}"]`).forEach(btn => {
+      btn.querySelector('svg').setAttribute('fill', isInWatchlist(videoId) ? 'currentColor' : 'none');
+      btn.classList.toggle('text-red-500', isInWatchlist(videoId));
+      btn.classList.toggle('text-white/70', !isInWatchlist(videoId));
+    });
+    // Re-render watchlist if YouTube tab is active
+    if (currentTab === 'youtube') { const wlEl = document.getElementById('yt-watchlist-content'); if (wlEl) renderWatchlistItems(); }
+  }
+
   // Squad state
   let allSquads = [];
   let squadsInitialized = false;
@@ -854,7 +888,8 @@ const sl = labels.social;
         const gifUrl = embed.external.uri;
         html += `<div class="mt-2 rounded overflow-hidden bg-black flex justify-center"><img src="${escapeHtml(gifUrl)}" alt="${escapeHtml(embed.external.title || 'GIF')}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>`;
       } else if (ytId) {
-        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video yt-placeholder" data-yt-id="${ytId}" style="cursor:pointer;position:relative">
+        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video yt-placeholder relative" data-yt-id="${ytId}" style="cursor:pointer;position:relative">
+          ${ytHeartBtn(ytId, embed.external.title || '', '')}
           <img src="https://i.ytimg.com/vi/${ytId}/hqdefault.jpg" class="w-full h-full object-cover" alt="" loading="lazy" onerror="this.style.display='none'" />
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
             <svg width="68" height="48" viewBox="0 0 68 48"><path d="M66.5 7.7s-.7-4.7-2.8-6.8C60.7-2 57.2-2 55.6-2.2 46.5-3 34-3 34-3s-12.5 0-21.6.8C10.8-2 7.3-2 4.3.9 2.2 3 1.5 7.7 1.5 7.7S.8 13.2.8 18.7v5.1c0 5.5.7 11 .7 11s.7 4.7 2.8 6.8c3 2.9 6.9 2.8 8.6 3.1 6.3.6 26.1.8 26.1.8s12.5 0 21.6-.8c1.6-.2 5.1-.2 8.1-3.1 2.1-2.1 2.8-6.8 2.8-6.8s.7-5.5.7-11v-5.1c0-5.5-.7-11-.7-11z" fill="red"/><path d="M27 33V13l18 10z" fill="#fff"/></svg>
@@ -945,7 +980,8 @@ const sl = labels.social;
     if (post.type === 'youtube') {
       return `
         <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden">
-          <div class="aspect-video bg-black yt-placeholder" data-yt-id="${escapeHtml(post.videoId)}" style="cursor:pointer;position:relative">
+          <div class="aspect-video bg-black yt-placeholder relative" data-yt-id="${escapeHtml(post.videoId)}" style="cursor:pointer;position:relative">
+            ${ytHeartBtn(post.videoId, post.title, post.thumbnail)}
             <img src="${escapeHtml(post.thumbnail)}" class="w-full h-full object-cover" alt="" loading="lazy" onerror="this.style.display='none'" />
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
               <svg width="68" height="48" viewBox="0 0 68 48"><path d="M66.5 7.7s-.7-4.7-2.8-6.8C60.7-2 57.2-2 55.6-2.2 46.5-3 34-3 34-3s-12.5 0-21.6.8C10.8-2 7.3-2 4.3.9 2.2 3 1.5 7.7 1.5 7.7S.8 13.2.8 18.7v5.1c0 5.5.7 11 .7 11s.7 4.7 2.8 6.8c3 2.9 6.9 2.8 8.6 3.1 6.3.6 26.1.8 26.1.8s12.5 0 21.6-.8c1.6-.2 5.1-.2 8.1-3.1 2.1-2.1 2.8-6.8 2.8-6.8s.7-5.5.7-11v-5.1c0-5.5-.7-11-.7-11z" fill="red"/><path d="M27 33V13l18 10z" fill="#fff"/></svg>
@@ -2160,6 +2196,7 @@ const sl = labels.social;
     });
     observeVideos();
     initYTPlaceholders();
+    initYTHeartBtns();
   }
 
   // ============================================================
@@ -3345,8 +3382,24 @@ const sl = labels.social;
   async function loadYouTubeTab() {
     feedContainer.innerHTML = `
       <div class="space-y-4">
+        <!-- Watchlist -->
+        <div class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden">
+          <button id="yt-watchlist-toggle" class="w-full flex items-center justify-between p-4 hover:bg-theme-card-hover transition text-left">
+            <h2 class="text-lg font-semibold flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0" class="text-red-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              Watchlist <span id="yt-watchlist-count" class="text-xs text-theme-faint font-normal">(${youtubeWatchlist.length})</span>
+            </h2>
+            <svg id="yt-watchlist-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-theme-muted transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div id="yt-watchlist-content" class="px-4 pb-4"></div>
+        </div>
+
+        <!-- YouTube Channels -->
         <div class="rounded-lg border border-theme-card-border bg-theme-card p-4">
-          <h2 class="text-lg font-semibold mb-3">YouTube Channels</h2>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">YouTube Channels</h2>
+            <button id="yt-collapse-all" class="text-xs px-2 py-1 rounded bg-theme-surface-hover hover:bg-theme-card-hover transition text-theme-muted" title="Collapse/expand all channel videos">Collapse All</button>
+          </div>
           <div class="flex gap-2 mb-4">
             <input id="yt-search" type="text" placeholder="Search or paste YouTube channel URL..."
               class="flex-1 rounded bg-theme-input-bg border border-theme-input-border px-3 py-2 text-sm focus:outline-none focus:border-theme-primary" />
@@ -3380,6 +3433,56 @@ const sl = labels.social;
     });
     document.getElementById('yt-search').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') document.getElementById('yt-add-btn').click();
+    });
+
+    // Watchlist toggle
+    renderWatchlistItems();
+    document.getElementById('yt-watchlist-toggle').addEventListener('click', () => {
+      const content = document.getElementById('yt-watchlist-content');
+      const chevron = document.getElementById('yt-watchlist-chevron');
+      content.classList.toggle('hidden');
+      chevron.style.transform = content.classList.contains('hidden') ? 'rotate(-90deg)' : '';
+    });
+
+    // Collapse all channel videos
+    document.getElementById('yt-collapse-all').addEventListener('click', () => {
+      const allOpen = document.querySelectorAll('[id^="ch-videos-"]:not(.hidden)');
+      if (allOpen.length > 0) {
+        allOpen.forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.view-ch-videos-btn').forEach(btn => btn.textContent = 'Show Videos');
+      }
+    });
+  }
+
+  function renderWatchlistItems() {
+    const content = document.getElementById('yt-watchlist-content');
+    const countEl = document.getElementById('yt-watchlist-count');
+    if (countEl) countEl.textContent = `(${youtubeWatchlist.length})`;
+    if (!youtubeWatchlist.length) {
+      content.innerHTML = '<div class="text-center py-3 text-theme-faint text-sm">No videos saved yet. Click the heart on any video to add it here.</div>';
+      return;
+    }
+    content.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">${youtubeWatchlist.map(v => `
+      <div class="group relative overflow-hidden rounded border border-theme-input-border hover:border-theme-primary transition">
+        <div class="yt-placeholder cursor-pointer" data-yt-id="${escapeHtml(v.videoId)}">
+          <img src="${escapeHtml(v.thumbnail)}" alt="" class="w-full aspect-video object-cover group-hover:opacity-75 transition" loading="lazy" />
+          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center pointer-events-none">
+            <div class="text-white text-2xl opacity-0 group-hover:opacity-100 transition">▶</div>
+          </div>
+          <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-black/0 p-2 pointer-events-none">
+            <p class="text-white text-xs font-medium line-clamp-2">${escapeHtml(v.title)}</p>
+          </div>
+        </div>
+        <button class="wl-remove-btn absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-black/50 text-red-400 hover:text-red-300 hover:bg-black/70 transition" data-yt-id="${escapeHtml(v.videoId)}" title="Remove from watchlist">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`).join('')}</div>`;
+    initYTPlaceholders();
+    content.querySelectorAll('.wl-remove-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleWatchlist(btn.dataset.ytId);
+      });
     });
   }
 
@@ -3490,6 +3593,7 @@ const sl = labels.social;
             const { videos } = await res.json();
             container.innerHTML = videos.map(v => `
               <div class="yt-placeholder group relative overflow-hidden rounded border border-theme-input-border hover:border-theme-primary transition cursor-pointer" data-yt-id="${v.videoId}">
+                ${ytHeartBtn(v.videoId, v.title, v.thumbnail)}
                 <img src="${v.thumbnail}" alt="${v.title.slice(0, 50)}" class="w-full aspect-video object-cover group-hover:opacity-75 transition" />
                 <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
                   <div class="text-white text-2xl opacity-0 group-hover:opacity-100 transition">▶</div>
@@ -3501,6 +3605,7 @@ const sl = labels.social;
             btn.textContent = `Hide Videos (${videos.length})`;
             // Bind click handlers to use the shared inline player
             initYTPlaceholders();
+            initYTHeartBtns();
           }
         } catch (err) {
           btn.textContent = 'Error loading';

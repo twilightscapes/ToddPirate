@@ -1018,7 +1018,7 @@ const sl = labels.social;
   document.getElementById('slide-close').addEventListener('click', closeSlidePanel);
 
   async function openProfile(handle) {
-    openSlidePanel(`@${handle}`, ${SPINNER});
+    openSlidePanel(`@${handle}`, SPINNER);
     try {
       const profile = await fetchBskyProfile(handle);
       const feedData = await fetchBskyAuthorFeed(handle);
@@ -1047,7 +1047,7 @@ const sl = labels.social;
   }
 
   async function openThread(uri) {
-    openSlidePanel('Thread', ${SPINNER});
+    openSlidePanel('Thread', SPINNER);
     try {
       const data = await fetchBskyThread(uri);
       const thread = data.thread;
@@ -1329,7 +1329,7 @@ const sl = labels.social;
   async function loadFeedTab(append = false) {
     if (isLoading) return;
     isLoading = true;
-    if (!append) { feedContainer.innerHTML = ${SPINNER}; }
+    if (!append) { feedContainer.innerHTML = SPINNER; }
     scrollSentinel.classList.toggle('hidden', !append);
 
     try {
@@ -1495,7 +1495,7 @@ const sl = labels.social;
   async function loadDiscoverTrending(append = false) {
     if (isLoading) return;
     isLoading = true;
-    if (!append) feedContainer.innerHTML = ${SPINNER};
+    if (!append) feedContainer.innerHTML = SPINNER;
     scrollSentinel.classList.toggle('hidden', !append);
 
     try {
@@ -1549,7 +1549,7 @@ const sl = labels.social;
         btn.addEventListener('click', async () => {
           const topic = btn.dataset.topic;
           if (!topic) return;
-          feedContainer.innerHTML = ${SPINNER};
+          feedContainer.innerHTML = SPINNER;
           try {
             const data = await searchBskyPosts(topic);
             const posts = (data.posts || []).map(p => normalizeBskyPost({ post: p }));
@@ -1580,7 +1580,7 @@ const sl = labels.social;
     isLoading = true;
     const query = document.getElementById('discover-search-input')?.value.trim() || '';
     if (!append) {
-      feedContainer.innerHTML = ${SPINNER};
+      feedContainer.innerHTML = SPINNER;
     }
 
     try {
@@ -1624,7 +1624,7 @@ const sl = labels.social;
     isLoading = true;
     const query = document.getElementById('discover-search-input')?.value.trim() || '';
     if (!append) {
-      feedContainer.innerHTML = ${SPINNER};
+      feedContainer.innerHTML = SPINNER;
     }
 
     try {
@@ -1657,7 +1657,7 @@ const sl = labels.social;
     isLoading = true;
     if (!append) {
       bskyCursor = null;
-      feedContainer.innerHTML = ${SPINNER};
+      feedContainer.innerHTML = SPINNER;
     }
 
     try {
@@ -1727,7 +1727,7 @@ const sl = labels.social;
     if (!query) return;
     if (isLoading) return;
     isLoading = true;
-    if (!append) feedContainer.innerHTML = ${SPINNER};
+    if (!append) feedContainer.innerHTML = SPINNER;
 
     try {
       if (currentSearchType === 'posts') {
@@ -3151,7 +3151,7 @@ const sl = labels.social;
     scrollSentinel.classList.add('hidden');
 
     if (!append) {
-      feedContainer.innerHTML = ${SPINNER};
+      feedContainer.innerHTML = SPINNER;
     }
 
     try {

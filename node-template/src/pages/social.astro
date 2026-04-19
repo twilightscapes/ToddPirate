@@ -2641,7 +2641,7 @@ const sl = labels.social;
       window.__ytApiReady = false;
       ytPendingVideoId = null;
       window.__ytPendingVideoId = null;
-      iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1&origin=${encodeURIComponent(ytOrigin)}`;
+      iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?enablejsapi=1&autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(ytOrigin)}`;
       iframe.addEventListener('load', () => { setTimeout(ytHandshake, 300); }, { once: true });
     } else if (ytApiReady) {
       ytSendCommand('loadVideoById', [videoId]);

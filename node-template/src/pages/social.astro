@@ -169,42 +169,50 @@ const sl = labels.social;
   // Squad member lookup for highlighting (handle -> color)
   let squadMemberHandles = new Map();
 
-  // YouTube state
+  // Video state
   let youtubeChannels = [];
-  let youtubeWatchlist = [];
+  let videoWatchlist = [];
   let showYouTubeInFeed = true;
 
   // Load watchlist from localStorage
-  try { const wl = JSON.parse(localStorage.getItem('ps_yt_watchlist')); if (Array.isArray(wl)) youtubeWatchlist = wl; } catch {}
-  function saveWatchlist() { localStorage.setItem('ps_yt_watchlist', JSON.stringify(youtubeWatchlist)); }
-  function isInWatchlist(videoId) { return youtubeWatchlist.some(v => v.videoId === videoId); }
-  function ytHeartBtn(videoId, title, thumbnail) {
+  try { const wl = JSON.parse(localStorage.getItem('ps_video_watchlist') || localStorage.getItem('ps_yt_watchlist')); if (Array.isArray(wl)) videoWatchlist = wl; } catch {}
+  function saveWatchlist() { localStorage.setItem('ps_video_watchlist', JSON.stringify(videoWatchlist)); }
+  function isInWatchlist(videoId) { return videoWatchlist.some(v => v.videoId === videoId); }
+  function videoHeartBtn(videoId, title, thumbnail, extraAttrs) {
     const filled = isInWatchlist(videoId);
-    return `<button class="yt-heart-btn absolute top-2 right-2 z-20 p-1.5 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 transition ${filled ? 'text-red-500' : 'text-white'}" style="z-index:20" data-yt-id="${escapeHtml(videoId)}" data-yt-title="${escapeHtml(title || '')}" data-yt-thumb="${escapeHtml(thumbnail || '')}"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>`;
+    return `<button class="vid-heart-btn absolute top-2 right-2 z-20 p-1.5 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 transition ${filled ? 'text-red-500' : 'text-white'}" style="z-index:20" data-vid-id="${escapeHtml(videoId)}" data-vid-title="${escapeHtml(title || '')}" data-vid-thumb="${escapeHtml(thumbnail || '')}" ${extraAttrs || ''}><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>`;
   }
-  function initYTHeartBtns() {
-    document.querySelectorAll('.yt-heart-btn:not([data-heart-bound])').forEach(btn => {
+  function initVideoHeartBtns() {
+    document.querySelectorAll('.vid-heart-btn:not([data-heart-bound])').forEach(btn => {
       btn.dataset.heartBound = '1';
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleWatchlist(btn.dataset.ytId, btn.dataset.ytTitle, btn.dataset.ytThumb);
+        e.preventDefault();
+        const extra = {};
+        if (btn.dataset.vidType) extra.type = btn.dataset.vidType;
+        if (btn.dataset.vidHls) extra.hlsUrl = btn.dataset.vidHls;
+        toggleWatchlist(btn.dataset.vidId, btn.dataset.vidTitle, btn.dataset.vidThumb, extra);
       });
     });
   }
-  function toggleWatchlist(videoId, title, thumbnail) {
+  function toggleWatchlist(videoId, title, thumbnail, extra) {
     if (isInWatchlist(videoId)) {
-      youtubeWatchlist = youtubeWatchlist.filter(v => v.videoId !== videoId);
+      videoWatchlist = videoWatchlist.filter(v => v.videoId !== videoId);
     } else {
-      youtubeWatchlist.push({ videoId, title: title || '', thumbnail: thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`, addedAt: Date.now() });
+      const item = { videoId, title: title || '', thumbnail: thumbnail || '', addedAt: Date.now(), type: extra?.type || 'youtube' };
+      if (extra?.hlsUrl) item.hlsUrl = extra.hlsUrl;
+      if (!item.thumbnail && item.type === 'youtube') item.thumbnail = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      videoWatchlist.push(item);
     }
     saveWatchlist();
     // Update all heart icons for this video
-    document.querySelectorAll(`.yt-heart-btn[data-yt-id="${videoId}"]`).forEach(btn => {
-      btn.querySelector('svg').setAttribute('fill', isInWatchlist(videoId) ? 'currentColor' : 'none');
-      btn.classList.toggle('text-red-500', isInWatchlist(videoId));
-      btn.classList.toggle('text-white/70', !isInWatchlist(videoId));
+    const inList = isInWatchlist(videoId);
+    document.querySelectorAll(`.vid-heart-btn[data-vid-id="${CSS.escape(videoId)}"]`).forEach(btn => {
+      btn.querySelector('svg').setAttribute('fill', inList ? 'currentColor' : 'none');
+      btn.classList.toggle('text-red-500', inList);
+      btn.classList.toggle('text-white', !inList);
     });
-    // Re-render watchlist if YouTube tab is active
+    // Re-render watchlist if Video tab is active
     if (currentTab === 'youtube') { const wlEl = document.getElementById('yt-watchlist-content'); if (wlEl) renderWatchlistItems(); }
   }
 
@@ -876,8 +884,11 @@ const sl = labels.social;
     }
     // Video (HLS)
     if (embed.video?.playlist) {
-      html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video">
-        <video controls preload="none" poster="${escapeHtml(embed.video.thumb || '')}" class="w-full h-full" data-hls="${escapeHtml(embed.video.playlist)}"></video>
+      const hlsId = embed.video.playlist;
+      const hlsPoster = embed.video.thumb || '';
+      html += `<div class="mt-2 rounded bg-black aspect-video relative overflow-visible">
+        <video controls preload="none" poster="${escapeHtml(hlsPoster)}" class="w-full h-full rounded" data-hls="${escapeHtml(embed.video.playlist)}"></video>
+        ${videoHeartBtn(hlsId, 'Bluesky Video', hlsPoster, `data-vid-type="hls" data-vid-hls="${escapeHtml(embed.video.playlist)}"`)}
       </div>`;
     }
     // External link / YouTube / Tenor GIF
@@ -890,7 +901,7 @@ const sl = labels.social;
       } else if (ytId) {
         html += `<div class="mt-2 rounded bg-black aspect-video yt-placeholder relative overflow-visible" data-yt-id="${ytId}" style="cursor:pointer;position:relative">
           <img src="https://i.ytimg.com/vi/${ytId}/hqdefault.jpg" class="absolute inset-0 w-full h-full object-cover" alt="" loading="lazy" onerror="this.style.display='none'" />
-          ${ytHeartBtn(ytId, embed.external.title || '', '')}
+          ${videoHeartBtn(ytId, embed.external.title || '', '')}
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
             <svg width="68" height="48" viewBox="0 0 68 48"><path d="M66.5 7.7s-.7-4.7-2.8-6.8C60.7-2 57.2-2 55.6-2.2 46.5-3 34-3 34-3s-12.5 0-21.6.8C10.8-2 7.3-2 4.3.9 2.2 3 1.5 7.7 1.5 7.7S.8 13.2.8 18.7v5.1c0 5.5.7 11 .7 11s.7 4.7 2.8 6.8c3 2.9 6.9 2.8 8.6 3.1 6.3.6 26.1.8 26.1.8s12.5 0 21.6-.8c1.6-.2 5.1-.2 8.1-3.1 2.1-2.1 2.8-6.8 2.8-6.8s.7-5.5.7-11v-5.1c0-5.5-.7-11-.7-11z" fill="red"/><path d="M27 33V13l18 10z" fill="#fff"/></svg>
           </div>
@@ -982,7 +993,7 @@ const sl = labels.social;
         <article class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden">
           <div class="aspect-video bg-black yt-placeholder relative overflow-visible" data-yt-id="${escapeHtml(post.videoId)}" style="cursor:pointer;position:relative">
             <img src="${escapeHtml(post.thumbnail)}" class="absolute inset-0 w-full h-full object-cover" alt="" loading="lazy" onerror="this.style.display='none'" />
-            ${ytHeartBtn(post.videoId, post.title, post.thumbnail)}
+            ${videoHeartBtn(post.videoId, post.title, post.thumbnail)}
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
               <svg width="68" height="48" viewBox="0 0 68 48"><path d="M66.5 7.7s-.7-4.7-2.8-6.8C60.7-2 57.2-2 55.6-2.2 46.5-3 34-3 34-3s-12.5 0-21.6.8C10.8-2 7.3-2 4.3.9 2.2 3 1.5 7.7 1.5 7.7S.8 13.2.8 18.7v5.1c0 5.5.7 11 .7 11s.7 4.7 2.8 6.8c3 2.9 6.9 2.8 8.6 3.1 6.3.6 26.1.8 26.1.8s12.5 0 21.6-.8c1.6-.2 5.1-.2 8.1-3.1 2.1-2.1 2.8-6.8 2.8-6.8s.7-5.5.7-11v-5.1c0-5.5-.7-11-.7-11z" fill="red"/><path d="M27 33V13l18 10z" fill="#fff"/></svg>
             </div>
@@ -2196,7 +2207,7 @@ const sl = labels.social;
     });
     observeVideos();
     initYTPlaceholders();
-    initYTHeartBtns();
+    initVideoHeartBtns();
   }
 
   // ============================================================
@@ -3399,7 +3410,7 @@ const sl = labels.social;
               <h3 id="yt-now-title" class="font-semibold text-sm truncate"></h3>
               <p id="yt-now-channel" class="text-xs text-theme-faint truncate"></p>
             </div>
-            <button id="yt-now-heart" class="yt-heart-btn p-1.5 rounded-full hover:bg-theme-surface-hover transition text-theme-muted" data-yt-id="" data-yt-title="" data-yt-thumb="">
+            <button id="yt-now-heart" class="vid-heart-btn p-1.5 rounded-full hover:bg-theme-surface-hover transition text-theme-muted" data-vid-id="" data-vid-title="" data-vid-thumb="">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
           </div>
@@ -3410,7 +3421,7 @@ const sl = labels.social;
           <button id="yt-watchlist-toggle" class="w-full flex items-center justify-between p-4 hover:bg-theme-card-hover transition text-left">
             <h2 class="text-lg font-semibold flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0" class="text-red-500"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              Watchlist <span id="yt-watchlist-count" class="text-xs text-theme-faint font-normal">(${youtubeWatchlist.length})</span>
+              Watchlist <span id="yt-watchlist-count" class="text-xs text-theme-faint font-normal">(${videoWatchlist.length})</span>
             </h2>
             <svg id="yt-watchlist-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-theme-muted transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
@@ -3479,8 +3490,8 @@ const sl = labels.social;
     // Now-playing heart button
     const nowHeart = document.getElementById('yt-now-heart');
     nowHeart.addEventListener('click', () => {
-      toggleWatchlist(nowHeart.dataset.ytId, nowHeart.dataset.ytTitle, nowHeart.dataset.ytThumb);
-      updateNowPlayingHeart(nowHeart.dataset.ytId);
+      toggleWatchlist(nowHeart.dataset.vidId, nowHeart.dataset.vidTitle, nowHeart.dataset.vidThumb);
+      updateNowPlayingHeart(nowHeart.dataset.vidId);
     });
   }
 
@@ -3502,12 +3513,49 @@ const sl = labels.social;
     // Update heart state
     const nowHeart = document.getElementById('yt-now-heart');
     if (nowHeart) {
-      nowHeart.dataset.ytId = videoId;
-      nowHeart.dataset.ytTitle = title || '';
-      nowHeart.dataset.ytThumb = thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+      nowHeart.dataset.vidId = videoId;
+      nowHeart.dataset.vidTitle = title || '';
+      nowHeart.dataset.vidThumb = thumbnail || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
       updateNowPlayingHeart(videoId);
     }
     // Scroll player into view
+    player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function playHlsInTopPlayer(hlsUrl, title, poster) {
+    const player = document.getElementById('yt-top-player');
+    if (!player) return;
+    // Hide YouTube wrapper if it was active
+    hideYTWrapper();
+    if (ytActiveContainer === player) { ytActiveContainer = null; window.__ytActiveContainer = null; }
+    // Create HLS video in top player
+    player.innerHTML = `<video id="yt-top-hls-video" controls autoplay class="w-full h-full" poster="${escapeHtml(poster || '')}"></video>`;
+    const video = document.getElementById('yt-top-hls-video');
+    if (video) {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = hlsUrl;
+      } else if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(hlsUrl);
+        hls.attachMedia(video);
+      }
+    }
+    // Update now-playing bar
+    const nowPlaying = document.getElementById('yt-now-playing');
+    const nowTitle = document.getElementById('yt-now-title');
+    const nowChannel = document.getElementById('yt-now-channel');
+    if (nowPlaying) {
+      nowPlaying.classList.remove('hidden');
+      nowTitle.textContent = title || 'Bluesky Video';
+      nowChannel.textContent = 'Bluesky';
+    }
+    const nowHeart = document.getElementById('yt-now-heart');
+    if (nowHeart) {
+      nowHeart.dataset.vidId = hlsUrl;
+      nowHeart.dataset.vidTitle = title || 'Bluesky Video';
+      nowHeart.dataset.vidThumb = poster || '';
+      updateNowPlayingHeart(hlsUrl);
+    }
     player.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -3517,7 +3565,7 @@ const sl = labels.social;
     const inList = isInWatchlist(videoId);
     nowHeart.querySelector('svg').setAttribute('fill', inList ? 'currentColor' : 'none');
     nowHeart.classList.toggle('text-red-500', inList);
-    nowHeart.classList.toggle('text-theme-muted', !inList);
+    nowHeart.classList.toggle('text-white', !inList);
   }
 
   function bindYTTabThumbnails(container, channelName) {
@@ -3532,30 +3580,49 @@ const sl = labels.social;
   function renderWatchlistItems() {
     const content = document.getElementById('yt-watchlist-content');
     const countEl = document.getElementById('yt-watchlist-count');
-    if (countEl) countEl.textContent = `(${youtubeWatchlist.length})`;
+    if (countEl) countEl.textContent = `(${videoWatchlist.length})`;
     if (!content) return;
-    if (!youtubeWatchlist.length) {
+    if (!videoWatchlist.length) {
       content.innerHTML = '<div class="text-center py-3 text-theme-faint text-sm">No videos saved yet. Click the heart on any video to add it here.</div>';
       return;
     }
-    content.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">${youtubeWatchlist.map(v => `
-      <div class="group relative overflow-hidden rounded border border-theme-input-border hover:border-theme-primary transition cursor-pointer yt-tab-thumb" data-yt-id="${escapeHtml(v.videoId)}" data-yt-title="${escapeHtml(v.title)}" data-yt-thumb="${escapeHtml(v.thumbnail)}">
-        <img src="${escapeHtml(v.thumbnail)}" alt="" class="w-full aspect-video object-cover group-hover:opacity-75 transition" loading="lazy" />
+    content.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">${videoWatchlist.map(v => {
+      const isHls = v.type === 'hls';
+      const thumbSrc = v.thumbnail || (isHls ? '' : `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`);
+      const typeBadge = isHls ? '<span class="absolute top-1.5 left-1.5 z-10 text-[10px] px-1.5 py-0.5 rounded bg-blue-600/80 text-white font-medium">Bluesky</span>' : '';
+      return `
+      <div class="group relative overflow-hidden rounded border border-theme-input-border hover:border-theme-primary transition cursor-pointer wl-thumb" data-vid-id="${escapeHtml(v.videoId)}" data-vid-title="${escapeHtml(v.title)}" data-vid-thumb="${escapeHtml(thumbSrc)}" data-vid-type="${isHls ? 'hls' : 'youtube'}" ${isHls ? `data-vid-hls="${escapeHtml(v.hlsUrl || v.videoId)}"` : ''}>
+        ${thumbSrc ? `<img src="${escapeHtml(thumbSrc)}" alt="" class="w-full aspect-video object-cover group-hover:opacity-75 transition" loading="lazy" />` : '<div class="w-full aspect-video bg-theme-surface flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-theme-faint"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>'}
+        ${typeBadge}
         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center pointer-events-none">
           <div class="text-white text-2xl opacity-0 group-hover:opacity-100 transition">▶</div>
         </div>
         <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-black/0 p-2 pointer-events-none">
           <p class="text-white text-xs font-medium line-clamp-2">${escapeHtml(v.title)}</p>
         </div>
-        <button class="wl-remove-btn absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-black/50 text-red-400 hover:text-red-300 hover:bg-black/70 transition" data-yt-id="${escapeHtml(v.videoId)}" title="Remove from watchlist">
+        <button class="wl-remove-btn absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-black/50 text-red-400 hover:text-red-300 hover:bg-black/70 transition" data-vid-id="${escapeHtml(v.videoId)}" title="Remove from watchlist">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-      </div>`).join('')}</div>`;
-    bindYTTabThumbnails(content, 'Watchlist');
+      </div>`;
+    }).join('')}</div>`;
+    // Bind YouTube thumbnails to top player
+    content.querySelectorAll('.wl-thumb:not([data-vid-type="hls"]):not([data-tab-bound])').forEach(el => {
+      el.dataset.tabBound = '1';
+      el.addEventListener('click', () => {
+        playInTopPlayer(el.dataset.vidId, el.dataset.vidTitle || '', 'Watchlist', el.dataset.vidThumb || '');
+      });
+    });
+    // Bind HLS thumbnails to inline player
+    content.querySelectorAll('.wl-thumb[data-vid-type="hls"]:not([data-tab-bound])').forEach(el => {
+      el.dataset.tabBound = '1';
+      el.addEventListener('click', () => {
+        playHlsInTopPlayer(el.dataset.vidHls, el.dataset.vidTitle || '', el.dataset.vidThumb || '');
+      });
+    });
     content.querySelectorAll('.wl-remove-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        toggleWatchlist(btn.dataset.ytId);
+        toggleWatchlist(btn.dataset.vidId);
       });
     });
   }
@@ -3667,7 +3734,7 @@ const sl = labels.social;
             const { videos } = await res.json();
             container.innerHTML = videos.map(v => `
               <div class="yt-tab-thumb group relative overflow-hidden rounded border border-theme-input-border hover:border-theme-primary transition cursor-pointer" data-yt-id="${v.videoId}" data-yt-title="${escapeHtml(v.title)}" data-yt-thumb="${escapeHtml(v.thumbnail)}">
-                ${ytHeartBtn(v.videoId, v.title, v.thumbnail)}
+                ${videoHeartBtn(v.videoId, v.title, v.thumbnail)}
                 <img src="${v.thumbnail}" alt="${v.title.slice(0, 50)}" class="w-full aspect-video object-cover group-hover:opacity-75 transition" />
                 <div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center pointer-events-none">
                   <div class="text-white text-2xl opacity-0 group-hover:opacity-100 transition">▶</div>
@@ -3678,7 +3745,7 @@ const sl = labels.social;
               </div>`).join('');
             btn.textContent = `Hide Videos (${videos.length})`;
             bindYTTabThumbnails(container, ch.name);
-            initYTHeartBtns();
+            initVideoHeartBtns();
           }
         } catch (err) {
           btn.textContent = 'Error loading';

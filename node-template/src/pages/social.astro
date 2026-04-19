@@ -43,7 +43,7 @@ const sl = labels.social;
       <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="text">Text Only</button>
       <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="links">Links</button>
       <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="pirate">Pirate RSS</button>
-      <button class="filter-pill rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-filter="bookmarks">Saved</button>
+      <button id="saved-posts-btn" class="filter-pill rounded bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition border border-theme-border flex items-center gap-1" data-filter="bookmarks"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg> Saved</button>
     </div>
 
     <!-- Discover sub-tabs (shown for Discover tab) -->
@@ -1563,7 +1563,11 @@ const sl = labels.social;
       setActivePill('.filter-pill', btn);
       currentFilter = btn.dataset.filter;
       resetPagination();
-      loadFeedTab();
+      if (currentFilter === 'bookmarks') {
+        loadSavedPosts();
+      } else {
+        loadFeedTab();
+      }
     });
   });
 
@@ -1616,6 +1620,52 @@ const sl = labels.social;
   // ============================================================
   // FEED TAB — Bluesky timeline + Pirate RSS merged
   // ============================================================
+  async function loadSavedPosts() {
+    feedContainer.innerHTML = SPINNER;
+    scrollSentinel.classList.add('hidden');
+    try {
+      const bookmarkUris = Object.keys(myBookmarks).filter(u => u.startsWith('at://'));
+      if (!bookmarkUris.length) {
+        feedContainer.innerHTML = '<div class="text-center py-8 text-theme-faint">No saved posts yet. Tap the bookmark icon on any post to save it.</div>';
+        return;
+      }
+      // Fetch posts in batches of 25 (API limit)
+      const allPosts = [];
+      for (let i = 0; i < bookmarkUris.length; i += 25) {
+        const batch = bookmarkUris.slice(i, i + 25);
+        try {
+          const uriParams = batch.map(u => `uris=${encodeURIComponent(u)}`).join('&');
+          const url = `${BSKY_PUBLIC}/app.bsky.feed.getPosts?${uriParams}`;
+          const res = await fetchTimeout(url, {}, 10000);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.posts) {
+              allPosts.push(...data.posts.map(p => normalizeBskyPost({ post: p })));
+            }
+          }
+        } catch (err) { console.warn('[PS] getPosts batch error:', err.message); }
+      }
+      // Deduplicate by URI
+      const seen = new Set();
+      const unique = allPosts.filter(p => { if (seen.has(p.uri)) return false; seen.add(p.uri); return true; });
+      // Sort by bookmark date (newest first)
+      unique.sort((a, b) => {
+        const aDate = myBookmarks[a.uri]?.savedAt || a.pubDate;
+        const bDate = myBookmarks[b.uri]?.savedAt || b.pubDate;
+        return new Date(bDate) - new Date(aDate);
+      });
+      if (!unique.length) {
+        feedContainer.innerHTML = '<div class="text-center py-8 text-theme-faint">No saved posts found.</div>';
+        return;
+      }
+      feedContainer.innerHTML = unique.map(p => renderPostCard(p)).join('');
+      attachAllListeners();
+      initHlsVideos();
+    } catch (err) {
+      feedContainer.innerHTML = `<div class="text-center py-8 text-red-400">Failed to load saved posts: ${err.message}</div>`;
+    }
+  }
+
   async function loadFeedTab(append = false) {
     if (isLoading) return;
     isLoading = true;

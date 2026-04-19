@@ -888,7 +888,7 @@ const sl = labels.social;
         const gifUrl = embed.external.uri;
         html += `<div class="mt-2 rounded overflow-hidden bg-black flex justify-center"><img src="${escapeHtml(gifUrl)}" alt="${escapeHtml(embed.external.title || 'GIF')}" style="width:100%;max-height:28rem;object-fit:contain" loading="lazy" onerror="this.parentElement.style.display='none'" /></div>`;
       } else if (ytId) {
-        html += `<div class="mt-2 rounded overflow-hidden bg-black aspect-video yt-placeholder relative" data-yt-id="${ytId}" style="cursor:pointer;position:relative">
+        html += `<div class="mt-2 rounded bg-black aspect-video yt-placeholder relative" data-yt-id="${ytId}" style="cursor:pointer;position:relative">
           ${ytHeartBtn(ytId, embed.external.title || '', '')}
           <img src="https://i.ytimg.com/vi/${ytId}/hqdefault.jpg" class="w-full h-full object-cover" alt="" loading="lazy" onerror="this.style.display='none'" />
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
@@ -2471,6 +2471,8 @@ const sl = labels.social;
   function observeVideos() {
     document.querySelectorAll('.aspect-video').forEach(container => {
       if (container._miniPlayerObserved) return;
+      // Skip the dedicated top player on the YouTube tab
+      if (container.id === 'yt-top-player') return;
       container._miniPlayerObserved = true;
       miniPlayerObserver.observe(container);
       // For HLS videos, track play/pause and pause others on play
@@ -2640,8 +2642,8 @@ const sl = labels.social;
     iframe._userActivated = true;
     window.__ytActiveContainer = ytActiveContainer;
 
-    // Observe this container for scroll-away behavior
-    if (!container._miniPlayerObserved) {
+    // Observe this container for scroll-away behavior (skip dedicated top player)
+    if (!container._miniPlayerObserved && container.id !== 'yt-top-player') {
       container._miniPlayerObserved = true;
       miniPlayerObserver.observe(container);
     }

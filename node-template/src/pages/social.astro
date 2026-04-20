@@ -775,46 +775,66 @@ const sl = labels.social;
   // ============================================================
   // NORMALIZE POST DATA
   // ============================================================
+
+  // Extract embed data from a Bluesky embed view object (recursive for nested quotes)
+  function extractEmbedData(embed, depth = 0) {
+    if (!embed || depth > 3) return {};
+    let data = {};
+
+    if (embed.$type === 'app.bsky.embed.images#view') {
+      data.images = embed.images.map(i => ({ thumb: i.thumb, fullsize: i.fullsize, alt: i.alt || '' }));
+    }
+    if (embed.$type === 'app.bsky.embed.video#view') {
+      data.video = { playlist: embed.playlist, thumb: embed.thumbnail, alt: embed.alt || '' };
+    }
+    if (embed.$type === 'app.bsky.embed.external#view') {
+      data.external = { uri: embed.external.uri, title: embed.external.title, description: embed.external.description, thumb: embed.external.thumb };
+    }
+    if (embed.$type === 'app.bsky.embed.recordWithMedia#view') {
+      const media = embed.media;
+      if (media?.$type === 'app.bsky.embed.images#view') {
+        data.images = media.images.map(i => ({ thumb: i.thumb, fullsize: i.fullsize, alt: i.alt || '' }));
+      }
+      if (media?.$type === 'app.bsky.embed.video#view') {
+        data.video = { playlist: media.playlist, thumb: media.thumbnail, alt: media.alt || '' };
+      }
+      if (media?.$type === 'app.bsky.embed.external#view') {
+        data.external = { uri: media.external.uri, title: media.external.title, description: media.external.description, thumb: media.external.thumb };
+      }
+      const rec = embed.record?.record;
+      if (rec) {
+        data.quote = {
+          text: rec.value?.text || '',
+          author: rec.author?.displayName || rec.author?.handle || '',
+          handle: rec.author?.handle || '',
+          avatar: rec.author?.avatar || '',
+          embeds: rec.embeds?.[0] ? extractEmbedData(rec.embeds[0], depth + 1) : (rec.embed ? extractEmbedData(rec.embed, depth + 1) : {}),
+        };
+      }
+    }
+    if (embed.$type === 'app.bsky.embed.record#view') {
+      const rec = embed.record;
+      if (rec) {
+        data.quote = {
+          text: rec.value?.text || '',
+          author: rec.author?.displayName || rec.author?.handle || '',
+          handle: rec.author?.handle || '',
+          avatar: rec.author?.avatar || '',
+          embeds: rec.embeds?.[0] ? extractEmbedData(rec.embeds[0], depth + 1) : {},
+        };
+      }
+    }
+    return data;
+  }
+
   function normalizeBskyPost(item) {
     const post = item.post;
     const reason = item.reason;
     const embed = post.embed;
-    let embedData = {};
+    let embedData = embed ? extractEmbedData(embed) : {};
     let imageUrl = null;
 
-    if (embed?.$type === 'app.bsky.embed.images#view') {
-      embedData.images = embed.images.map(i => ({ thumb: i.thumb, fullsize: i.fullsize, alt: i.alt || '' }));
-      if (embed.images[0]) imageUrl = embed.images[0].fullsize || embed.images[0].thumb;
-    }
-    if (embed?.$type === 'app.bsky.embed.video#view') {
-      embedData.video = { playlist: embed.playlist, thumb: embed.thumbnail, alt: embed.alt || '' };
-    }
-    if (embed?.$type === 'app.bsky.embed.external#view') {
-      embedData.external = { uri: embed.external.uri, title: embed.external.title, description: embed.external.description, thumb: embed.external.thumb };
-    }
-    if (embed?.$type === 'app.bsky.embed.recordWithMedia#view') {
-      const media = embed.media;
-      if (media?.$type === 'app.bsky.embed.images#view') {
-        embedData.images = media.images.map(i => ({ thumb: i.thumb, fullsize: i.fullsize, alt: i.alt || '' }));
-        if (media.images[0]) imageUrl = media.images[0].fullsize || media.images[0].thumb;
-      }
-      if (media?.$type === 'app.bsky.embed.video#view') {
-        embedData.video = { playlist: media.playlist, thumb: media.thumbnail, alt: media.alt || '' };
-      }
-      if (media?.$type === 'app.bsky.embed.external#view') {
-        embedData.external = { uri: media.external.uri, title: media.external.title, description: media.external.description, thumb: media.external.thumb };
-      }
-      const rec = embed.record?.record;
-      if (rec?.value?.text) {
-        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
-      }
-    }
-    if (embed?.$type === 'app.bsky.embed.record#view') {
-      const rec = embed.record;
-      if (rec?.value?.text) {
-        embedData.quote = { text: rec.value.text, author: rec.author?.displayName || rec.author?.handle || '', handle: rec.author?.handle || '', avatar: rec.author?.avatar || '' };
-      }
-    }
+    if (embedData.images?.[0]) imageUrl = embedData.images[0].fullsize || embedData.images[0].thumb;
 
     // Track viewer state for likes/reposts
     const viewer = post.viewer || {};
@@ -999,15 +1019,18 @@ const sl = labels.social;
         </a>`;
       }
     }
-    // Quote
-    if (embed.quote?.text) {
+    // Quote (full rendering with embeds)
+    if (embed.quote) {
+      const q = embed.quote;
+      const quoteEmbedHtml = renderEmbeds(q.embeds || {});
       html += `<div class="mt-2 rounded border border-theme-input-border p-3 bg-theme-surface/50">
         <div class="flex items-center gap-1.5 text-xs text-theme-muted mb-1">
-          ${embed.quote.avatar ? `<img src="${escapeHtml(embed.quote.avatar)}" class="h-4 w-4 rounded-full" />` : ''}
-          <span class="font-medium text-theme-text">${escapeHtml(embed.quote.author)}</span>
-          <span class="text-theme-faint">@${escapeHtml(embed.quote.handle)}</span>
+          ${q.avatar ? `<img src="${escapeHtml(q.avatar)}" class="h-4 w-4 rounded-full" />` : ''}
+          <span class="font-medium text-theme-text">${escapeHtml(q.author)}</span>
+          <span class="text-theme-faint">@${escapeHtml(q.handle)}</span>
         </div>
-        <p class="text-sm text-theme-text line-clamp-4">${escapeHtml(embed.quote.text)}</p>
+        ${q.text ? `<p class="text-sm text-theme-text whitespace-pre-wrap">${formatText(q.text)}</p>` : ''}
+        ${quoteEmbedHtml}
       </div>`;
     }
     return html;
@@ -4463,36 +4486,47 @@ const sl = labels.social;
     const icon = reasonIcons[n.reason] || reasonIcons.mention;
     const label = reasonLabels[n.reason] || n.reason;
     const time = timeAgo(n.indexedAt);
-    const recordText = n.record?.text ? `<p class="text-sm text-theme-muted mt-1 line-clamp-3">${escapeHtml(n.record.text)}</p>` : '';
+    const recordText = n.record?.text ? `<p class="text-sm text-theme-text whitespace-pre-wrap mt-1">${formatText(n.record.text)}</p>` : '';
     const unreadDot = n.isRead ? '' : '<span class="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>';
+
+    // Render embeds from the notification (images, video, external, quotes)
+    let notifEmbedHtml = '';
+    if (n.embed) {
+      const embedData = extractEmbedData(n.embed);
+      if (Object.keys(embedData).length) {
+        notifEmbedHtml = renderEmbeds(embedData);
+      }
+    }
 
     // Build link to the post or profile
     let clickAttr = '';
     if (n.reason === 'follow') {
       clickAttr = `data-notif-profile="${escapeHtml(a.handle)}"`;
     } else if (n.reasonSubject) {
-      // Link to the original post that was liked/reposted/replied to
-      const rkey = n.reasonSubject.split('/').pop();
-      const repo = n.reasonSubject.split('/')[2];
       clickAttr = `data-notif-uri="${escapeHtml(n.reasonSubject)}"`;
     } else if (n.uri) {
       clickAttr = `data-notif-uri="${escapeHtml(n.uri)}"`;
     }
 
-    return `<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-theme-surface-hover transition cursor-pointer border-b border-theme-border" ${clickAttr}>
-      <div class="flex-shrink-0 relative">
-        ${avatar}
-        <div class="absolute -bottom-1 -right-1 bg-theme-bg rounded-full p-0.5">${icon}</div>
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="font-medium text-sm truncate">${escapeHtml(a.displayName)}</span>
-          <span class="text-theme-faint text-xs">@${escapeHtml(a.handle)}</span>
-          <span class="text-theme-faint text-xs ml-auto flex-shrink-0">${time}</span>
-          ${unreadDot}
+    return `<div class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden mb-2" ${clickAttr}>
+      <div class="p-3">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 relative cursor-pointer">
+            ${avatar}
+            <div class="absolute -bottom-1 -right-1 bg-theme-bg rounded-full p-0.5">${icon}</div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-sm truncate">${escapeHtml(a.displayName)}</span>
+              <span class="text-theme-faint text-xs">@${escapeHtml(a.handle)}</span>
+              <span class="text-theme-faint text-xs ml-auto flex-shrink-0">${time}</span>
+              ${unreadDot}
+            </div>
+            <p class="text-sm text-theme-muted">${label}</p>
+          </div>
         </div>
-        <p class="text-sm text-theme-muted">${label}</p>
         ${recordText}
+        ${notifEmbedHtml}
       </div>
     </div>`;
   }

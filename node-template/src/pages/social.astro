@@ -1116,7 +1116,7 @@ const sl = labels.social;
               </div>
             </div>
             <h3 class="font-semibold text-sm">${escapeHtml(post.title)}</h3>
-            ${post.text ? `<p class="mt-1 text-sm text-theme-muted line-clamp-2">${escapeHtml(post.text)}</p>` : ''}
+            ${post.text ? `<p class="mt-1 text-sm text-theme-muted line-clamp-2">${formatText(post.text)}</p>` : ''}
             <div class="mt-3 flex items-center gap-4 text-sm text-theme-muted">
               <a href="${escapeHtml(post.link)}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1 hover:text-theme-text transition">${ICON.externalLink} YouTube</a>
               <button class="share-btn flex items-center gap-1 hover:text-green-500 transition" data-url="${escapeHtml(post.link)}" data-title="${escapeHtml(post.title || '')}">${ICON.share} Share</button>

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteConfig } from '../lib/config';
 import labels from '../content/labels.json';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const sl = labels.social;
 ---
 
@@ -139,7 +140,7 @@ const sl = labels.social;
 </BaseLayout>
 
 <script is:inline src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
-<script is:inline define:vars={{ hubUrl: siteConfig.hubUrl, L: labels.social, FL: labels.feeds }} data-astro-rerun>
+<script is:inline define:vars={{ hubUrl: siteConfig.hubUrl, L: labels.social, FL: labels.feeds, psBase: base }} data-astro-rerun>
   // ============================================================
   // STATE
   // ============================================================
@@ -4592,7 +4593,7 @@ const sl = labels.social;
         <button class="notif-pill ${notifSub === 'mentions' ? 'active-pill' : ''} rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-nsub="mentions">Mentions</button>
         <button class="notif-pill ${notifSub === 'nudges' ? 'active-pill' : ''} rounded-full bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition" data-nsub="nudges">Nudges</button>
         <button id="notif-mark-read" class="ml-auto rounded bg-theme-input-bg px-3 py-1 text-xs hover:bg-theme-surface-hover transition border border-theme-border">Mark all read</button>
-        <a href="/settings/" class="rounded bg-theme-input-bg px-2 py-1 text-xs hover:bg-theme-surface-hover transition border border-theme-border inline-flex items-center" title="Notification settings">⚙</a>
+        <a href="${psBase}/settings/" class="rounded bg-theme-input-bg px-2 py-1 text-xs hover:bg-theme-surface-hover transition border border-theme-border inline-flex items-center" title="Notification settings">⚙</a>
       </div>`;
 
       if (notifSub === 'nudges') {

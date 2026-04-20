@@ -237,8 +237,9 @@ const socialNavItems = allNavItems.filter((item: any) => socialPaths.some(p => i
     </footer>
     -->
 
-    <script is:inline define:vars={{ hubUrl: siteConfig.hubUrl, socialEnabled: enableSocial }} data-astro-rerun>
+    <script is:inline define:vars={{ hubUrl: siteConfig.hubUrl, socialEnabled: enableSocial, psBase: base }} data-astro-rerun>
       // Handle auth token from OAuth redirect
+      window.__PS_BASE = psBase;
       if (socialEnabled) {
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');

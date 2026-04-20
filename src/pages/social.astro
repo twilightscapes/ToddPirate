@@ -4530,6 +4530,37 @@ const sl = labels.social;
       clickAttr = `data-notif-uri="${escapeHtml(n.uri)}"`;
     }
 
+    // Action tray for notifications that have a post
+    let actionTray = '';
+    const isOwnPost = n.reason === 'reply' || n.reason === 'mention' || n.reason === 'quote';
+    const hasSubject = n.subjectPost && n.subjectPost.uri;
+    if (isOwnPost || hasSubject) {
+      const postUri = isOwnPost ? n.uri : n.subjectPost.uri;
+      const postCid = isOwnPost ? n.cid : (n.subjectPost.cid || '');
+      const counts = isOwnPost ? n : n.subjectPost;
+      const liked = isOwnPost ? n.viewer?.like : n.subjectPost.viewer?.like;
+      const reposted = isOwnPost ? n.viewer?.repost : n.subjectPost.viewer?.repost;
+      const postText = isOwnPost ? (n.record?.text || '') : (n.subjectPost.text || '');
+      const postHandle = isOwnPost ? a.handle : (n.subjectPost.author?.handle || '');
+      const bskyLink = `https://bsky.app/profile/${postHandle}/post/${postUri.split('/').pop()}`;
+
+      actionTray = `<div class="mt-2 pt-2 border-t border-theme-card-border flex items-center gap-3 text-xs text-theme-faint">
+        <button class="bsky-reply-btn flex items-center gap-1 px-2 py-1 rounded hover:bg-theme-surface-hover transition" data-uri="${escapeHtml(postUri)}">
+          ${ICON.reply} <span>${counts.replyCount || 0}</span>
+        </button>
+        <button class="bsky-repost-btn flex items-center gap-1 px-2 py-1 rounded hover:bg-theme-surface-hover transition ${reposted ? 'text-green-400' : ''}" data-uri="${escapeHtml(postUri)}" data-cid="${escapeHtml(postCid)}">
+          ${ICON.repost} <span class="repost-count">${counts.repostCount || 0}</span>
+        </button>
+        <button class="bsky-like-btn flex items-center gap-1 px-2 py-1 rounded hover:bg-theme-surface-hover transition ${liked ? 'text-red-400' : ''}" data-uri="${escapeHtml(postUri)}" data-cid="${escapeHtml(postCid)}">
+          ${liked ? ICON.heartFill : ICON.heart} <span class="like-count">${counts.likeCount || 0}</span>
+        </button>
+        <div class="ml-auto flex items-center gap-3">
+          <button class="share-btn px-2 py-1 rounded hover:bg-theme-surface-hover transition" data-url="${escapeHtml(bskyLink)}" data-title="${escapeHtml(postText.slice(0, 100))}" title="Share">${ICON.share}</button>
+          <a href="${escapeHtml(bskyLink)}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 rounded hover:bg-theme-surface-hover hover:text-theme-text transition" title="View on Bluesky">${ICON.butterfly}</a>
+        </div>
+      </div>`;
+    }
+
     return `<div class="rounded-lg border border-theme-card-border bg-theme-card overflow-hidden mb-2" ${clickAttr}>
       <div class="p-3">
         <div class="flex items-start gap-3">
@@ -4550,6 +4581,7 @@ const sl = labels.social;
         ${recordText}
         ${notifEmbedHtml}
         ${subjectHtml}
+        ${actionTray}
       </div>
     </div>`;
   }
@@ -4641,6 +4673,8 @@ const sl = labels.social;
           feedContainer.insertAdjacentHTML('beforeend', html);
         }
 
+        attachAllListeners();
+
         // Mark as seen on Bluesky (sync across devices)
         if (!append) {
           try {
@@ -4693,7 +4727,8 @@ const sl = labels.social;
 
       // Click handlers for notification items (open post thread or profile)
       feedContainer.querySelectorAll('[data-notif-uri]').forEach(el => {
-        el.addEventListener('click', () => {
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('.bsky-like-btn, .bsky-repost-btn, .bsky-reply-btn, .bsky-bookmark-btn, .share-btn, a[target="_blank"]')) return;
           const uri = el.dataset.notifUri;
           if (uri) openThread(uri);
         });

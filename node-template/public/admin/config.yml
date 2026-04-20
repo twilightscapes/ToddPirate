@@ -8,6 +8,8 @@ backend:
 site_url: https://twilightscapes.github.io
 display_url: https://twilightscapes.github.io
 
+logo_url: /images/logoImage.svg
+
 media_folder: public/images
 public_folder: /images
 

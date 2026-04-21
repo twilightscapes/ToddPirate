@@ -1,10 +1,10 @@
 {
-  "github": "your-username",
-  "camera": "",
-  "bio": "I take photos of things.",
+  "github": "twilightscapes",
+  "camera": "Canon",
+  "bio": "Taylor says excuse the mess!",
   "showDates": true,
   "mastodon": "",
-  "author": "Photographer",
+  "author": "Netlify",
   "logo": {
     "type": "text",
     "image": "",
@@ -12,8 +12,8 @@
   },
   "enableSocial": true,
   "instagram": "",
-  "location": "",
-  "title": "My Photo Site",
-  "avatar": "",
+  "location": "USA",
+  "title": "Netlify's Photos",
+  "avatar": "/images/avatar.jpg",
   "description": "A photography site on the Pirate Social network"
 }

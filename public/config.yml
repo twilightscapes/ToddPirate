@@ -1,17 +1,17 @@
 backend:
   name: github
-  repo: your-username/your-repo
+  repo: twilightscapes/ToddPirate
   branch: main
-  base_url: https://piratesocial-hub.fly.dev
+  base_url: https://piratesocial.app
   auth_endpoint: /api/decap/auth
 
-site_url: https://example.com
-display_url: https://example.com
+site_url: https://twilightscapes.github.io/ToddPirate
+display_url: https://twilightscapes.github.io/ToddPirate
 
 logo_url: /images/logoImage.svg
 
 media_folder: public/images
-public_folder: /images
+public_folder: /ToddPirate/images
 
 collections:
   - name: posts
